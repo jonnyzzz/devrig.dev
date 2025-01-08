@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -12,6 +13,11 @@ func FindConfigFile(startDir string) (string, error) {
 	configFileName := ".idew.yaml"
 	dir := startDir
 
+	dir, err := filepath.Abs(dir)
+	if err != nil {
+		return "", fmt.Errorf("failed to get absolute path for directory %s: %w", dir, err)
+	}
+
 	visitedDirs := make(map[string]bool) // Track visited directories for symlink safety
 
 	for {
@@ -20,6 +26,8 @@ func FindConfigFile(startDir string) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("failed to resolve symlink in directory %s: %w", dir, err)
 		}
+
+		log.Printf("Searching for config file in directory: %s", absDir)
 
 		// Check for infinite loops due to symlinks
 		if visitedDirs[absDir] {
@@ -32,7 +40,7 @@ func FindConfigFile(startDir string) (string, error) {
 
 		// Check if the file exists
 		if _, err := os.Stat(configPath); err == nil {
-			fmt.Printf("Found configuration file at: %s\n", configPath)
+			log.Printf("Found configuration file at: %s", configPath)
 			return configPath, nil
 		}
 

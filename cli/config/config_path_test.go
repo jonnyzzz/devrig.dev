@@ -6,6 +6,41 @@ import (
 	"testing"
 )
 
+// TestFindConfigFileRelativePath tests that the function resolves the relative path "." correctly
+func TestFindConfigFileRelativePath(t *testing.T) {
+	// Create a temporary directory structure
+	tempDir := t.TempDir()
+
+	// Switch to the temporary directory using os.Chdir
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("failed to get the current working directory: %v", err)
+	}
+	defer os.Chdir(originalDir) // Ensure to restore the original directory
+	err = os.Chdir(tempDir)
+	if err != nil {
+		t.Fatalf("failed to change directory to temporary directory: %v", err)
+	}
+
+	// Create the config file in the current (temp) directory
+	configFilePath := filepath.Join(tempDir, ".idew.yaml")
+	err = os.WriteFile(configFilePath, []byte("config: test"), 0644)
+	if err != nil {
+		t.Fatalf("failed to create config file: %v", err)
+	}
+
+	// Test: Should find the file using "."
+	foundPath, err := FindConfigFile(".")
+	if err != nil || foundPath == "" {
+		t.Errorf("expected to find config file, but got error: %v", err)
+	}
+	foundPath, _ = filepath.EvalSymlinks(foundPath)
+	configFilePath, _ = filepath.EvalSymlinks(configFilePath)
+	if foundPath != configFilePath {
+		t.Errorf("expected config file path %s, but got %s", configFilePath, foundPath)
+	}
+}
+
 // TestFindConfigFileInCurrentDir tests that the config file is found in the current directory
 func TestFindConfigFileInCurrentDir(t *testing.T) {
 	// Create a temporary directory structure
