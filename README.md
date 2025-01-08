@@ -26,11 +26,11 @@ The IDE is downloaded and configured under the `.ides` directory next to the `.i
 
 We welcome contributions to the IDE Wrapper project! Here are some ways you can contribute:
 
-1. **Report Bugs**: If you encounter any issues, please report them on our [issue tracker](https://github.com/your-repo/issues).
+1. **Report Bugs**: If you encounter any issues, please report them on our [issue tracker](https://github.com/jonnyzzz/ide-wrapper/issues).
 
-2. **Suggest Features**: Have an idea for a new feature? Let us know by opening a feature request on our [issue tracker](https://github.com/your-repo/issues).
+2. **Suggest Features**: Have an idea for a new feature? Let us know by opening a feature request on our [issue tracker](https://github.com/jonnyzzz/ide-wrapper/issues).
 
-3. **Submit Pull Requests**: If you have a fix or a new feature, feel free to submit a pull request. Please make sure to follow our [contribution guidelines](https://github.com/your-repo/CONTRIBUTING.md).
+3. **Submit Pull Requests**: If you have a fix or a new feature, feel free to submit a pull request. Please make sure to follow our [contribution guidelines](https://github.com/jonnyzzz/ide-wrapper/CONTRIBUTING.md).
 
 4. **Improve Documentation**: Help us improve our documentation by making it clearer and more comprehensive.
 
