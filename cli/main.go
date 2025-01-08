@@ -25,11 +25,9 @@ func main() {
 }
 
 func runMainCommand(cmd *cobra.Command, args []string) {
-	configPath, err := config.FindConfigFile(".")
+	configPath, err := config.ResolveConfig()
 	if err != nil {
 		log.Fatalln("Failed to find config file. ", err)
 	}
-
 	fmt.Println("Config file:", configPath)
-
 }

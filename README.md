@@ -21,6 +21,15 @@ The tool looks for the `.ides.yaml` file for configuration.
 
 The IDE is downloaded and configured under the `.ides` directory next to the `.ides.yaml` file. 
 
+The file is of the following format, it allows to specify the IDE which is used to open the project, e.g. 
+
+```yaml
+ide:
+    name: GoLand        #IDE which is needed
+    version: 2024.3     #public version
+    #build: optional build number
+    #more ide-spefic parameters 
+```
 
 # Contribute
 
