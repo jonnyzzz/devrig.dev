@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_binary")
+load("@io_bazel_rules_go//go:def.bzl", "go_binary",  "go_library")
 load("@bazel_gazelle//:def.bzl", "gazelle")
 
 # Gazelle configuration
@@ -6,7 +6,7 @@ gazelle(name = "gazelle")
 
 # Binary build configuration
 go_binary(
-    name = "jbcli",
+    name = "idew",
     embed = [":cli_lib"],
     pure = "on",  # Enable static linking
     static = "on",
@@ -21,10 +21,11 @@ go_binary(
 go_library(
     name = "cli_lib",
     srcs = [
-        "cli/cmd/version.go",
+        "cmd/version.go",
+        "cmd/version.go",
         # Add other Go source files here
     ],
-    importpath = "github.com/jonnyzzz/jbcli",
+    importpath = "github.com/jonnyzzz/jbcli/    ",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_spf13_cobra//:go_default_library",
@@ -33,7 +34,7 @@ go_library(
 
 # Platform-specific build targets
 [go_binary(
-    name = "jbcli_%s_%s" % (os, arch),
+    name = "idew_%s_%s" % (os, arch),
     embed = [":cli_lib"],
     pure = "on",
     static = "on",
