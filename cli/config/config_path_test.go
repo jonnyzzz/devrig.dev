@@ -20,9 +20,11 @@ func TestFindConfigFileInCurrentDir(t *testing.T) {
 
 	// Test: Should find the file in the current directory
 	foundPath, err := FindConfigFile(tempDir)
-	if err != nil {
+	if err != nil || foundPath == "" {
 		t.Errorf("expected to find config file, but got error: %v", err)
 	}
+	foundPath, _ = filepath.EvalSymlinks(foundPath)
+	configFilePath, _ = filepath.EvalSymlinks(configFilePath)
 	if foundPath != configFilePath {
 		t.Errorf("expected config file path %s, but got %s", configFilePath, foundPath)
 	}
@@ -47,9 +49,11 @@ func TestFindConfigFileInParentDir(t *testing.T) {
 
 	// Test: Should find the file in the parent directory
 	foundPath, err := FindConfigFile(subDir)
-	if err != nil {
+	if err != nil || foundPath == "" {
 		t.Errorf("expected to find config file, but got error: %v", err)
 	}
+	foundPath, _ = filepath.EvalSymlinks(foundPath)
+	configFilePath, _ = filepath.EvalSymlinks(configFilePath)
 	if foundPath != configFilePath {
 		t.Errorf("expected config file path %s, but got %s", configFilePath, foundPath)
 	}
