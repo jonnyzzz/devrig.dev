@@ -17,42 +17,42 @@ type nestedFeed struct {
 }
 
 type feedEntry struct {
-	Name         string        `json:"name"`
-	Build        string        `json:"build"`
-	MajorVersion *majorVersion `json:"major_version"`
-	Version      string        `json:"version"`
-	Released     string        `json:"released"`
-	Package      *Package      `json:"package"`
-	Quality      *quality      `json:"quality"`
+	Name         string                `json:"name"`
+	Build        string                `json:"build"`
+	MajorVersion *feedItemMajorVersion `json:"major_version"`
+	Version      string                `json:"version"`
+	Released     string                `json:"released"`
+	Package      *feedItemPackage      `json:"package"`
+	Quality      *feedItemQuality      `json:"feedItemQuality"`
 }
 
-type majorVersion struct {
+type feedItemMajorVersion struct {
 	MajorVersion string `json:"name"`
 }
 
-type quality struct {
+type feedItemQuality struct {
 	QualityName string `json:"name"`
 }
 
-type Package struct {
-	OS           string       `json:"os"`
-	Type         string       `json:"type"`
-	Requirements Requirements `json:"requirements"`
-	URL          string       `json:"url"`
-	Size         int64        `json:"size"`
-	Checksums    []Checksum   `json:"checksums"`
+type feedItemPackage struct {
+	OS           string               `json:"os"`
+	Type         string               `json:"type"`
+	Requirements feedItemRequirements `json:"requirements"`
+	URL          string               `json:"url"`
+	Size         int64                `json:"size"`
+	Checksums    []feedItemChecksum   `json:"checksums"`
 }
 
-type Requirements struct {
-	CPUArch CPUArchRequirement `json:"cpu_arch"`
+type feedItemRequirements struct {
+	CPUArch feedItemCPUArchRequirement `json:"cpu_arch"`
 }
 
-type CPUArchRequirement struct {
+type feedItemCPUArchRequirement struct {
 	Equals       string `json:"$eq"`
 	ErrorMessage string `json:"error_message"`
 }
 
-type Checksum struct {
+type feedItemChecksum struct {
 	Algorithm string `json:"alg"`
 	Value     string `json:"value"`
 }
@@ -102,6 +102,8 @@ func downloadAndProcessFeed(url string) error {
 		return fmt.Errorf("failed to parse signed data: %w fopr %s", err, url)
 	}
 
+	//TODO: implement signature verification
+
 	// Get content from PKCS7
 	content := p7.Content
 
@@ -150,14 +152,14 @@ func downloadAndProcessFeed(url string) error {
 	return nil
 }
 
-func processRelease(release feedEntry) {
-	fmt.Printf("Product: %s\n", release.Name)
-	fmt.Printf("  Version: %s (Build: %s)\n", release.Version, release.Build)
-	fmt.Printf("  Released: %s\n", release.Released)
+func processRelease(item feedEntry) {
+	fmt.Printf("Product: %s\n", item.Name)
+	fmt.Printf("  Version: %s (Build: %s)\n", item.Version, item.Build)
+	fmt.Printf("  Released: %s\n", item.Released)
 
-	if release.Package != nil {
-		pkg := release.Package
-		fmt.Printf("  Package:\n")
+	if item.Package != nil {
+		pkg := item.Package
+		fmt.Printf("  feedItemPackage:\n")
 		fmt.Printf("    OS: %s\n", pkg.OS)
 		fmt.Printf("    Type: %s\n", pkg.Type)
 		fmt.Printf("    Size: %d bytes\n", pkg.Size)
