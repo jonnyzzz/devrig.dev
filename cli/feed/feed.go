@@ -1,26 +1,11 @@
 package feed
 
 import (
-	"bytes"
 	"cli/config"
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ulikunitz/xz"
-	"go.mozilla.org/pkcs7"
-	"io"
-	"log"
-	"net/http"
-	"runtime"
 )
-
-var public_feed_urls = []string{
-	"https://download.jetbrains.com/toolbox/feeds/v1/release.feed.xz.signed",
-	"https://download.jetbrains.com/toolbox/feeds/v1/public-feed-arm.feed.xz.signed",
-	"https://download.jetbrains.com/toolbox/feeds/v1/android-studio.feed.xz.signed",
-
-	//https://download.jetbrains.com/toolbox/feeds/v1/enterprise.feed.xz.signed,
-}
 
 type feedList struct {
 	Feeds   []nestedFeed `json:"feeds"`
@@ -73,40 +58,8 @@ type feedItemChecksum struct {
 	Value     string `json:"value"`
 }
 
-func resolveOsAndArch() (os string, arch string) {
-	// Detect OS
-	os = runtime.GOOS
-	// Detect CPU architecture
-	arch = runtime.GOARCH
-
-	if os == "darwin" {
-		os = "mac"
-	}
-
-	if arch == "amd64" {
-		arch = "x64"
-	}
-
-	switch os {
-	case "windows":
-	case "linux":
-	case "mac":
-	default:
-		log.Fatalln("Unknown operating system: ", os)
-	}
-
-	switch arch {
-	case "arm64":
-	case "x64":
-	default:
-		log.Fatalln("Unknown arch: ", arch)
-	}
-
-	return
-}
-
 func FindEntryByConfig(ide config.IDEConfig) error {
-	entries, err := downloadAndProcessFeedImpl(context.Background(), public_feed_urls[0])
+	entries, err := downloadAndProcessFeedImpl(context.Background(), getFeedUrls())
 	if err != nil {
 		return err
 	}
@@ -122,153 +75,46 @@ func FindEntryByConfig(ide config.IDEConfig) error {
 	return nil
 }
 
-func filterEntriesByOsAndArch(slice []feedEntry) []feedEntry {
-	targetOS, targetArch := resolveOsAndArch()
+func downloadAndProcessFeedImpl(ctx context.Context, urlsToProcess []string) ([]feedEntry, error) {
+	processed := map[string]bool{}
+	queueOfUrls := []string{}
+	entries := []feedEntry{}
 
-	var result []feedEntry
+	queueOfUrls = append(queueOfUrls, urlsToProcess...)
 
-	if slice == nil {
-		return result
-	}
+	for len(queueOfUrls) > 0 {
+		url := queueOfUrls[0]
+		queueOfUrls = queueOfUrls[1:]
 
-	for _, entry := range slice {
-		if entry.Package.OS != targetOS {
+		if processed[url] {
 			continue
 		}
 
-		if entry.Package.Requirements.CPUArch.Equals != targetArch {
-			continue
-		}
+		processed[url] = true
 
-		result = append(result, entry) // Append items that satisfy the predicate
-	}
-
-	return result
-}
-
-func downloadAndValidateFeedUrl(ctx context.Context, url string) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w for %s", err, url)
-	}
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to download feed: %w for %s", err, url)
-	}
-	defer func(Body io.ReadCloser) {
-		_ = Body.Close()
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d for %s", resp.StatusCode, url)
-	}
-
-	// Read PKCS7 data
-	signedData, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read signed data: %w for %s", err, url)
-	}
-
-	// Parse PKCS7
-	p7, err := pkcs7.Parse(signedData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse signed data: %w fopr %s", err, url)
-	}
-
-	//TODO: implement signature verification
-
-	// Get content from PKCS7
-	content := p7.Content
-
-	// Setup XZ decoder
-	xzReader, err := xz.NewReader(bytes.NewReader(content))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create xz reader: %w for %s", err, url)
-	}
-
-	// Read all decompressed content
-	decompressed, err := io.ReadAll(xzReader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decompress content: %w for %s", err, url)
-	}
-
-	return decompressed, nil
-}
-
-func downloadAndProcessFeedImpl(ctx context.Context, url string) ([]feedEntry, error) {
-	decompressed, err := downloadAndValidateFeedUrl(ctx, url)
-	if err != nil {
-		return []feedEntry{}, fmt.Errorf("failed to download feed: %w for %s", err, url)
-	}
-
-	var feedList feedList
-	err = json.Unmarshal(decompressed, &feedList)
-	if err != nil {
-		return []feedEntry{}, fmt.Errorf("failed to parse nested feeds: %w for %s", err, url)
-	}
-
-	feedList.Entries = filterEntriesByOsAndArch(feedList.Entries)
-
-	// Process nested feeds
-	for _, nestedFeed := range feedList.Feeds {
 		select {
 		case <-ctx.Done():
 			return []feedEntry{}, ctx.Err()
 		default:
 		}
 
-		log.Printf("Processing nested feed: %s for %s\n", nestedFeed.URL, url)
-		nestedEntries, err := downloadAndProcessFeedImpl(ctx, nestedFeed.URL)
-
+		decompressed, err := downloadAndValidateFeedUrl(ctx, url)
 		if err != nil {
-			return []feedEntry{}, fmt.Errorf("failed to process nested feed %s: %w for %s", nestedFeed.URL, err, url)
+			return []feedEntry{}, fmt.Errorf("failed to download feed: %w for %s", err, url)
 		}
 
-		feedList.Entries = append(feedList.Entries, nestedEntries...)
-	}
-
-	return feedList.Entries, nil
-}
-
-func downloadAndProcessFeed(ctx context.Context, url string) error {
-	entries, err := downloadAndProcessFeedImpl(ctx, url)
-	if err != nil {
-		return err
-	}
-
-	for _, entry := range entries {
-		logFeedItem(entry)
-	}
-
-	return nil
-}
-
-// Filter function that takes a slice and a predicate function
-func logFeedItem(item feedEntry) {
-	fmt.Printf("Product: %s\n", item.Name)
-	fmt.Printf("  Version: %s (Build: %s)\n", item.Version, item.Build)
-	fmt.Printf("  Released: %s\n", item.Released)
-
-	if item.Package != nil {
-		pkg := item.Package
-		fmt.Printf("  feedItemPackage:\n")
-		fmt.Printf("    OS: %s\n", pkg.OS)
-		fmt.Printf("    Type: %s\n", pkg.Type)
-		fmt.Printf("    Size: %d mb\n", pkg.Size/1024/1024)
-
-		if len(pkg.Checksums) > 0 {
-			fmt.Printf("    Checksums:\n")
-			for _, checksum := range pkg.Checksums {
-				fmt.Printf("      %s: %s\n", checksum.Algorithm, checksum.Value)
-			}
+		var list feedList
+		err = json.Unmarshal(decompressed, &list)
+		if err != nil {
+			return []feedEntry{}, fmt.Errorf("failed to parse nested feeds: %w for %s", err, url)
 		}
 
-		if pkg.Requirements.CPUArch.Equals != "" {
-			fmt.Printf("    CPU Architecture: %s\n", pkg.Requirements.CPUArch.Equals)
+		for _, nestedFeed := range list.Feeds {
+			queueOfUrls = append(queueOfUrls, nestedFeed.URL)
 		}
 
-		fmt.Printf("    URL: %s\n", pkg.URL)
+		entries = append(entries, filterEntriesByOsAndArch(list.Entries)...)
 	}
-	fmt.Println()
+
+	return entries, nil
 }

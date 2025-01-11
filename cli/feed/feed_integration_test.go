@@ -2,6 +2,7 @@ package feed
 
 import (
 	"context"
+	"errors"
 	"io"
 	"log"
 	"os"
@@ -18,6 +19,23 @@ func setupTestLogging(t *testing.T) {
 	}
 }
 
+func downloadAndProcessFeed(ctx context.Context, url string) error {
+	entries, err := downloadAndProcessFeedImpl(ctx, []string{url})
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		logFeedItem(entry)
+	}
+
+	if len(entries) < 10 {
+		return errors.New("too few entries")
+	}
+
+	return nil
+}
+
 func TestIntegrationWithJetBrainsFeedRelease(t *testing.T) {
 	setupTestLogging(t)
 
@@ -32,7 +50,6 @@ func TestIntegrationWithJetBrainsFeedRelease(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to process JetBrains feed: %v", err)
 	}
-
 }
 
 func TestIntegrationWithJetBrainsFeedEnterprise(t *testing.T) {
