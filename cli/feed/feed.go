@@ -2,6 +2,7 @@ package feed
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/ulikunitz/xz"
@@ -79,8 +80,13 @@ func main2() {
 	}
 }
 
-func downloadAndProcessFeed(url string) error {
-	resp, err := http.Get(url)
+func downloadAndProcessFeed(ctx context.Context, url string) error {
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w for %s", err, url)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download feed: %w for %s", err, url)
 	}
@@ -130,9 +136,14 @@ func downloadAndProcessFeed(url string) error {
 
 	// Process nested feeds
 	for _, nestedFeed := range feedList.Feeds {
-		log.Printf("Processing nested feed: %s for %s\n", nestedFeed.URL, url)
-		if err := downloadAndProcessFeed(nestedFeed.URL); err != nil {
-			return fmt.Errorf("failed to process nested feed %s: %w for %s", nestedFeed.URL, err, url)
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			log.Printf("Processing nested feed: %s for %s\n", nestedFeed.URL, url)
+			if err := downloadAndProcessFeed(ctx, nestedFeed.URL); err != nil {
+				return fmt.Errorf("failed to process nested feed %s: %w for %s", nestedFeed.URL, err, url)
+			}
 		}
 	}
 
@@ -146,13 +157,13 @@ func downloadAndProcessFeed(url string) error {
 
 	// Process entries if any exist
 	for _, release := range entriesList.Entries {
-		processRelease(release)
+		logFeedItem(release)
 	}
 
 	return nil
 }
 
-func processRelease(item feedEntry) {
+func logFeedItem(item feedEntry) {
 	fmt.Printf("Product: %s\n", item.Name)
 	fmt.Printf("  Version: %s (Build: %s)\n", item.Version, item.Build)
 	fmt.Printf("  Released: %s\n", item.Released)

@@ -1,6 +1,7 @@
 package feed
 
 import (
+	"context"
 	"io"
 	"log"
 	"os"
@@ -26,7 +27,8 @@ func TestIntegrationWithJetBrainsFeedRelease(t *testing.T) {
 
 	feedURL := "https://download.jetbrains.com/toolbox/feeds/v1/release.feed.xz.signed"
 
-	err := downloadAndProcessFeed(feedURL)
+	ctx := context.Background()
+	err := downloadAndProcessFeed(ctx, feedURL)
 	if err != nil {
 		t.Fatalf("Failed to process JetBrains feed: %v", err)
 	}
@@ -42,7 +44,7 @@ func TestIntegrationWithJetBrainsFeedEnterprise(t *testing.T) {
 
 	feedURL := "https://download.jetbrains.com/toolbox/feeds/v1/enterprise.feed.xz.signed"
 
-	err := downloadAndProcessFeed(feedURL)
+	err := downloadAndProcessFeed(context.Background(), feedURL)
 	if err != nil {
 		t.Fatalf("Failed to process JetBrains feed: %v", err)
 	}
@@ -58,7 +60,7 @@ func TestIntegrationWithJetBrainsFeedArm(t *testing.T) {
 
 	feedURL := "https://download.jetbrains.com/toolbox/feeds/v1/public-feed-arm.feed.xz.signed"
 
-	err := downloadAndProcessFeed(feedURL)
+	err := downloadAndProcessFeed(context.Background(), feedURL)
 	if err != nil {
 		t.Fatalf("Failed to process JetBrains feed: %v", err)
 	}
@@ -74,7 +76,7 @@ func TestIntegrationWithJetBrainsFeedAndroid(t *testing.T) {
 
 	feedURL := "https://download.jetbrains.com/toolbox/feeds/v1/android-studio.feed.xz.signed"
 
-	err := downloadAndProcessFeed(feedURL)
+	err := downloadAndProcessFeed(context.Background(), feedURL)
 	if err != nil {
 		t.Fatalf("Failed to process JetBrains feed: %v", err)
 	}
