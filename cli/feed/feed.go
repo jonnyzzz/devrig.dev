@@ -25,6 +25,7 @@ type feedEntry struct {
 	Released     string                `json:"released"`
 	Package      *feedItemPackage      `json:"package"`
 	Quality      *feedItemQuality      `json:"feedItemQuality"`
+	RawJSON      json.RawMessage       `json:"-"` // Store original JSON
 }
 
 type feedItemMajorVersion struct {
@@ -58,26 +59,36 @@ type feedItemChecksum struct {
 	Value     string `json:"value"`
 }
 
-func main2() {
+func resolveOsAndArch() (os string, arch string) {
 	// Detect OS
-	os := runtime.GOOS
+	os = runtime.GOOS
 	// Detect CPU architecture
-	arch := runtime.GOARCH
+	arch = runtime.GOARCH
 
-	// Print the detected OS and CPU architecture
-	fmt.Printf("Operating System: %s\n", os)
-	fmt.Printf("CPU Architecture: %s\n", arch)
-
-	// Handle specific use cases
-	if os == "windows" && arch == "amd64" {
-		fmt.Println("Running on a Windows machine with x64 architecture.")
-	} else if os == "linux" && arch == "arm64" {
-		fmt.Println("Running on a Linux machine with ARM64 architecture.")
-	} else if os == "darwin" && arch == "arm64" {
-		fmt.Println("Running on a macOS machine with Apple Silicon (ARM64).")
-	} else {
-		fmt.Println("Detected system may not meet some requirements.")
+	if os == "darwin" {
+		os = "mac"
 	}
+
+	if arch == "amd64" {
+		arch = "x64"
+	}
+
+	switch os {
+	case "windows":
+	case "linux":
+	case "mac":
+	default:
+		log.Fatalln("Unknown operating system: ", os)
+	}
+
+	switch arch {
+	case "arm64":
+	case "x64":
+	default:
+		log.Fatalln("Unknown arch: ", arch)
+	}
+
+	return
 }
 
 func downloadAndProcessFeed(ctx context.Context, url string) error {
@@ -151,13 +162,24 @@ func downloadAndProcessFeed(ctx context.Context, url string) error {
 	var entriesList struct {
 		Entries []feedEntry `json:"entries"`
 	}
+
 	if err := json.Unmarshal(decompressed, &entriesList); err != nil {
 		return fmt.Errorf("failed to decode entries: %w for %s", err, url)
 	}
 
+	targetOS, targetArch := resolveOsAndArch()
+
 	// Process entries if any exist
-	for _, release := range entriesList.Entries {
-		logFeedItem(release)
+	for _, entry := range entriesList.Entries {
+		if entry.Package.OS != targetOS {
+			continue
+		}
+
+		if entry.Package.Requirements.CPUArch.Equals != targetArch {
+			continue
+		}
+
+		logFeedItem(entry)
 	}
 
 	return nil
@@ -173,7 +195,7 @@ func logFeedItem(item feedEntry) {
 		fmt.Printf("  feedItemPackage:\n")
 		fmt.Printf("    OS: %s\n", pkg.OS)
 		fmt.Printf("    Type: %s\n", pkg.Type)
-		fmt.Printf("    Size: %d bytes\n", pkg.Size)
+		fmt.Printf("    Size: %d mb\n", pkg.Size/1024/1024)
 
 		if len(pkg.Checksums) > 0 {
 			fmt.Printf("    Checksums:\n")
@@ -184,9 +206,6 @@ func logFeedItem(item feedEntry) {
 
 		if pkg.Requirements.CPUArch.Equals != "" {
 			fmt.Printf("    CPU Architecture: %s\n", pkg.Requirements.CPUArch.Equals)
-			if pkg.Requirements.CPUArch.ErrorMessage != "" {
-				fmt.Printf("    Architecture Error: %s\n", pkg.Requirements.CPUArch.ErrorMessage)
-			}
 		}
 
 		fmt.Printf("    URL: %s\n", pkg.URL)
