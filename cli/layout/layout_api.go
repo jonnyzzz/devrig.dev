@@ -35,8 +35,8 @@ func isDirectoryExistsAndNotEmpty(path string) (bool, error) {
 }
 
 func resolveTargetIdeHome(config config.Config) string {
-	ide := config.GetIDE()
-	return path.Join(config.CacheDir(), "ide", sanitizePath(ide.Name()+"-"+ide.Build()))
+	ideConfig := config.GetIDE()
+	return path.Join(config.CacheDir(), "ideConfig", sanitizePath(ideConfig.Name()+"-"+ideConfig.Build()))
 }
 
 type ResolveLocallyAvailableIdeNotFound struct{}

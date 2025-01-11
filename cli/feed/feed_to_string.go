@@ -2,30 +2,38 @@ package feed
 
 import "fmt"
 
-func logFeedItem(item feedEntry) {
-	fmt.Printf("Product: %s\n", item.Name)
-	fmt.Printf("  Version: %s (Build: %s)\n", item.Version, item.Build)
-	fmt.Printf("  Released: %s\n", item.Released)
+func (item *feedEntry) ToString() string {
+	var result string
+
+	result += fmt.Sprintf("Product: %s\n", item.Name)
+	result += fmt.Sprintf("  Version: %s (Build: %s)\n", item.Version, item.Build)
+	result += fmt.Sprintf("  Released: %s\n", item.Released)
 
 	if item.Package != nil {
 		pkg := item.Package
-		fmt.Printf("  feedItemPackage:\n")
-		fmt.Printf("    OS: %s\n", pkg.OS)
-		fmt.Printf("    Type: %s\n", pkg.Type)
-		fmt.Printf("    Size: %d mb\n", pkg.Size/1024/1024)
+		result += "  feedItemPackage:\n"
+		result += fmt.Sprintf("	OS: %s\n", pkg.OS)
+		result += fmt.Sprintf("	Type: %s\n", pkg.Type)
+		result += fmt.Sprintf("	Size: %d mb\n", pkg.Size/1024/1024)
 
 		if len(pkg.Checksums) > 0 {
-			fmt.Printf("    Checksums:\n")
+			result += "	Checksums:\n"
 			for _, checksum := range pkg.Checksums {
-				fmt.Printf("      %s: %s\n", checksum.Algorithm, checksum.Value)
+				result += fmt.Sprintf("	  %s: %s\n", checksum.Algorithm, checksum.Value)
 			}
 		}
 
 		if pkg.Requirements.CPUArch.Equals != "" {
-			fmt.Printf("    CPU Architecture: %s\n", pkg.Requirements.CPUArch.Equals)
+			result += fmt.Sprintf("	CPU Architecture: %s\n", pkg.Requirements.CPUArch.Equals)
 		}
 
-		fmt.Printf("    URL: %s\n", pkg.URL)
+		result += fmt.Sprintf("	URL: %s\n", pkg.URL)
 	}
-	fmt.Println()
+
+	return result
+}
+
+func logFeedItem(item feedEntry) {
+	text := item.ToString()
+	fmt.Println(text + "\n")
 }

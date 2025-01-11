@@ -3,118 +3,43 @@ package feed
 import (
 	"cli/config"
 	"context"
-	"encoding/json"
 	"fmt"
 )
 
-type feedList struct {
-	Feeds   []nestedFeed `json:"feeds"`
-	Entries []feedEntry  `json:"entries"`
+type RemoteIDE interface {
 }
 
-type nestedFeed struct {
-	URL string `json:"url"`
-}
-
-type feedEntry struct {
-	Name         string                `json:"name"`
-	Build        string                `json:"build"`
-	MajorVersion *feedItemMajorVersion `json:"major_version"`
-	Version      string                `json:"version"`
-	Released     string                `json:"released"`
-	Package      *feedItemPackage      `json:"package"`
-	Quality      *feedItemQuality      `json:"feedItemQuality"`
-	RawJSON      json.RawMessage       `json:"-"` // Store original JSON
-}
-
-type feedItemMajorVersion struct {
-	MajorVersion string `json:"name"`
-}
-
-type feedItemQuality struct {
-	QualityName string `json:"name"`
-}
-
-type feedItemPackage struct {
-	OS           string               `json:"os"`
-	Type         string               `json:"type"`
-	Requirements feedItemRequirements `json:"requirements"`
-	URL          string               `json:"url"`
-	Size         int64                `json:"size"`
-	Checksums    []feedItemChecksum   `json:"checksums"`
-}
-
-type feedItemRequirements struct {
-	CPUArch feedItemCPUArchRequirement `json:"cpu_arch"`
-}
-
-type feedItemCPUArchRequirement struct {
-	Equals       string `json:"$eq"`
-	ErrorMessage string `json:"error_message"`
-}
-
-type feedItemChecksum struct {
-	Algorithm string `json:"alg"`
-	Value     string `json:"value"`
-}
-
-func FindEntryByConfig(ide config.IDEConfig) error {
+func ResolveRemoteIdeByConfig(ideRequest config.IDEConfig) (RemoteIDE, error) {
 	entries, err := downloadAndProcessFeedImpl(context.Background(), getFeedUrls())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	for _, entry := range entries {
-		if entry.Name != ide.Name() {
+	var result *feedEntry
+	result = nil
+
+	for _, p := range entries {
+		entry := p
+		if entry.Name != ideRequest.Name() {
 			continue
 		}
 
-		return nil
-	}
-
-	return nil
-}
-
-func downloadAndProcessFeedImpl(ctx context.Context, urlsToProcess []string) ([]feedEntry, error) {
-	processed := map[string]bool{}
-	queueOfUrls := []string{}
-	entries := []feedEntry{}
-
-	queueOfUrls = append(queueOfUrls, urlsToProcess...)
-
-	for len(queueOfUrls) > 0 {
-		url := queueOfUrls[0]
-		queueOfUrls = queueOfUrls[1:]
-
-		if processed[url] {
+		if len(ideRequest.Version()) > 0 && ideRequest.Version() != entry.Version {
 			continue
 		}
 
-		processed[url] = true
-
-		select {
-		case <-ctx.Done():
-			return []feedEntry{}, ctx.Err()
-		default:
+		if len(ideRequest.Build()) > 0 && ideRequest.Build() != entry.Build {
+			continue
 		}
 
-		decompressed, err := downloadAndValidateFeedUrl(ctx, url)
-		if err != nil {
-			return []feedEntry{}, fmt.Errorf("failed to download feed: %w for %s", err, url)
+		if result == nil || result.OrderEntry < entry.OrderEntry {
+			result = &entry
 		}
-
-		var list feedList
-		err = json.Unmarshal(decompressed, &list)
-		if err != nil {
-			return []feedEntry{}, fmt.Errorf("failed to parse nested feeds: %w for %s", err, url)
-		}
-
-		for _, nestedFeed := range list.Feeds {
-			queueOfUrls = append(queueOfUrls, nestedFeed.URL)
-		}
-
-		entries = append(entries, filterEntriesByOsAndArch(list.Entries)...)
 	}
 
-	return entries, nil
+	if result != nil {
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("IDE is not found in feed. Name: %s", ideRequest.Name())
 }

@@ -2,6 +2,9 @@ package main
 
 import (
 	"cli/config"
+	"cli/feed"
+	"cli/layout"
+	"errors"
 	"fmt"
 	"github.com/spf13/cobra"
 	"log"
@@ -25,9 +28,34 @@ func main() {
 }
 
 func runMainCommand(cmd *cobra.Command, args []string) {
-	configPath, err := config.ResolveConfig()
+	localConfig, err := config.ResolveConfig()
 	if err != nil {
-		log.Fatalln("Failed to find config file. ", err)
+		log.Fatalln("Failed to find localConfig file. ", err)
 	}
-	fmt.Println("Config file:", configPath)
+
+	fmt.Println("Config file:", localConfig, "IDE name: ", localConfig.GetIDE().Name(), " version ", localConfig.GetIDE().Version())
+
+	//resolve the local IDE
+	localIde, err := layout.ResolveLocallyAvailableIde(localConfig)
+
+	var resolveLocallyAvailableIdeNotFound *layout.ResolveLocallyAvailableIdeNotFound
+	if errors.As(err, &resolveLocallyAvailableIdeNotFound) {
+		fmt.Println("IDE not found locally. Downloading...")
+
+		remoteIde, err := feed.ResolveRemoteIdeByConfig(localConfig.GetIDE())
+		if err != nil {
+			log.Fatalln("Failed to find remote IDE. ", err)
+		}
+
+		fmt.Printf("Found remote IDE. %v\n", remoteIde)
+
+		//downloadIDE(localConfig)
+		localIde, err = layout.ResolveLocallyAvailableIde(localConfig)
+	}
+
+	if err != nil {
+		log.Fatalln("Failed to find IDE. ", err)
+	}
+
+	fmt.Println("IDE:", localIde)
 }
