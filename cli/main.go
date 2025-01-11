@@ -3,10 +3,8 @@ package main
 import (
 	"cli/config"
 	"cli/feed"
-	"cli/layout"
-	"cli/layout_api"
+	"cli/unpack"
 	"context"
-	"errors"
 	"fmt"
 	"github.com/spf13/cobra"
 	"log"
@@ -37,33 +35,24 @@ func runMainCommand(cmd *cobra.Command, args []string) {
 
 	fmt.Println("Config file:", localConfig, "IDE name: ", localConfig.GetIDE().Name(), " version ", localConfig.GetIDE().Version())
 
-	//resolve the local IDE
-	localIde, err := layout.ResolveLocallyAvailableIde(localConfig)
-
-	var resolveLocallyAvailableIdeNotFound *layout_api.ResolveLocallyAvailableIdeNotFound
-	if errors.As(err, &resolveLocallyAvailableIdeNotFound) {
-		fmt.Println("IDE not found locally. Downloading...")
-
-		remoteIde, err := feed.ResolveRemoteIdeByConfig(localConfig.GetIDE())
-		if err != nil {
-			log.Fatalln("Failed to find remote IDE. ", err)
-		}
-
-		fmt.Printf("Found remote IDE. %v\n", remoteIde)
-
-		downloadedIde, err := feed.DownloadFeedEntry(context.Background(), remoteIde, localConfig)
-		if err != nil {
-			log.Fatalln("Failed to download remote IDE. ", err)
-		}
-
-		fmt.Printf("Downloaded remote IDE to %s\n", downloadedIde.TargetFile())
-
-		localIde, err = layout.ResolveLocallyAvailableIde(localConfig)
-	}
-
+	remoteIde, err := feed.ResolveRemoteIdeByConfig(localConfig.GetIDE())
 	if err != nil {
-		log.Fatalln("Failed to find IDE. ", err)
+		log.Fatalln("Failed to find remote IDE. ", err)
 	}
 
-	fmt.Println("IDE:", localIde)
+	fmt.Printf("Found remote IDE. %v\n", remoteIde)
+
+	downloadedIde, err := feed.DownloadFeedEntry(context.Background(), remoteIde, localConfig)
+	if err != nil {
+		log.Fatalln("Failed to download remote IDE. ", err)
+	}
+
+	fmt.Printf("Downloaded remote IDE to %s\n", downloadedIde.TargetFile())
+
+	loadUnpackedIde, err := unpack.UnpackIde(localConfig, downloadedIde)
+	if err != nil {
+		log.Fatalln("Failed to unpack remote IDE. ", err)
+	}
+
+	fmt.Println("", loadUnpackedIde)
 }
