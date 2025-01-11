@@ -4,6 +4,7 @@ import (
 	"cli/config"
 	"cli/feed"
 	"cli/layout"
+	"cli/layout_api"
 	"context"
 	"errors"
 	"fmt"
@@ -39,7 +40,7 @@ func runMainCommand(cmd *cobra.Command, args []string) {
 	//resolve the local IDE
 	localIde, err := layout.ResolveLocallyAvailableIde(localConfig)
 
-	var resolveLocallyAvailableIdeNotFound *layout.ResolveLocallyAvailableIdeNotFound
+	var resolveLocallyAvailableIdeNotFound *layout_api.ResolveLocallyAvailableIdeNotFound
 	if errors.As(err, &resolveLocallyAvailableIdeNotFound) {
 		fmt.Println("IDE not found locally. Downloading...")
 
@@ -50,10 +51,12 @@ func runMainCommand(cmd *cobra.Command, args []string) {
 
 		fmt.Printf("Found remote IDE. %v\n", remoteIde)
 
-		err = feed.DownloadFeedEntry(context.Background(), remoteIde, localConfig)
+		downloadedIde, err := feed.DownloadFeedEntry(context.Background(), remoteIde, localConfig)
 		if err != nil {
 			log.Fatalln("Failed to download remote IDE. ", err)
 		}
+
+		fmt.Printf("Downloaded remote IDE to %s\n", downloadedIde.TargetFile())
 
 		localIde, err = layout.ResolveLocallyAvailableIde(localConfig)
 	}

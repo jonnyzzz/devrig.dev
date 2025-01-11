@@ -4,6 +4,7 @@ import (
 	"cli/config"
 	"cli/feed_api"
 	"cli/ide"
+	"cli/layout_api"
 	"os"
 	"path"
 	"regexp"
@@ -46,12 +47,6 @@ func ResolveLocalDownloadFileName(localConfig config.Config, remoteIde feed_api.
 	return path.Join(localConfig.CacheDir(), "download", ideDir)
 }
 
-type ResolveLocallyAvailableIdeNotFound struct{}
-
-func (e *ResolveLocallyAvailableIdeNotFound) Error() string {
-	return "IDE is not available locally"
-}
-
 func ResolveLocallyAvailableIde(config config.Config) (ide.LocalIDE, error) {
 	targetIdeHome := resolveTargetIdeHome(config)
 
@@ -61,7 +56,7 @@ func ResolveLocallyAvailableIde(config config.Config) (ide.LocalIDE, error) {
 	}
 
 	if !existsAndNotEmpty {
-		return nil, &ResolveLocallyAvailableIdeNotFound{}
+		return nil, &layout_api.ResolveLocallyAvailableIdeNotFound{}
 	}
 
 	//TODO: to finger print check to double-check the IDE is not modified

@@ -14,7 +14,24 @@ import (
 	"path/filepath"
 )
 
-func DownloadFeedEntry(ctx context.Context, entry feed_api.RemoteIDE, config config.Config) error {
+type downloadedRemoteIde struct {
+	targetFile string
+	remoteIde  feed_api.RemoteIDE
+}
+
+func (d *downloadedRemoteIde) String() string {
+	return fmt.Sprintf("DownloadedRemoteIde{targetFile: %s, remoteIde: %s}", d.targetFile, d.remoteIde)
+}
+
+func (d *downloadedRemoteIde) TargetFile() string {
+	return d.targetFile
+}
+
+func (d *downloadedRemoteIde) RemoteIde() feed_api.RemoteIDE {
+	return d.remoteIde
+}
+
+func DownloadFeedEntry(ctx context.Context, entry feed_api.RemoteIDE, config config.Config) (feed_api.DownloadedRemoteIde, error) {
 	feedEntry, ok := entry.(*feedEntry)
 	if !ok {
 		log.Panicln("Failed to cast entry to feedEntry")
@@ -54,10 +71,13 @@ func DownloadFeedEntry(ctx context.Context, entry feed_api.RemoteIDE, config con
 	err := downloadIdeBinaryIfNeeded(ctx, pros)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &downloadedRemoteIde{
+		remoteIde:  feedEntry,
+		targetFile: targetFile,
+	}, nil
 }
 
 type downloadRequest struct {

@@ -9,3 +9,10 @@ type RemoteIDE interface {
 	Build() string
 	PackageType() string
 }
+
+type DownloadedRemoteIde interface {
+	fmt.Stringer
+
+	TargetFile() string
+	RemoteIde() RemoteIDE
+}
