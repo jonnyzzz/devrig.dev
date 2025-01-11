@@ -16,8 +16,8 @@ type nestedFeed struct {
 }
 
 type feedEntry struct {
-	Name         string                `json:"name"`
-	Build        string                `json:"build"`
+	NameV        string                `json:"name"`
+	BuildV       string                `json:"build"`
 	MajorVersion *feedItemMajorVersion `json:"major_version"`
 	Version      string                `json:"version"`
 	Released     string                `json:"released"`

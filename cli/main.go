@@ -4,6 +4,7 @@ import (
 	"cli/config"
 	"cli/feed"
 	"cli/layout"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/spf13/cobra"
@@ -49,7 +50,11 @@ func runMainCommand(cmd *cobra.Command, args []string) {
 
 		fmt.Printf("Found remote IDE. %v\n", remoteIde)
 
-		//downloadIDE(localConfig)
+		err = feed.DownloadFeedEntry(context.Background(), remoteIde, localConfig)
+		if err != nil {
+			log.Fatalln("Failed to download remote IDE. ", err)
+		}
+
 		localIde, err = layout.ResolveLocallyAvailableIde(localConfig)
 	}
 

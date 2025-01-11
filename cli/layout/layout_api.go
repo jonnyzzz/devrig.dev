@@ -2,6 +2,7 @@ package layout
 
 import (
 	"cli/config"
+	"cli/feed_api"
 	"cli/ide"
 	"os"
 	"path"
@@ -36,7 +37,13 @@ func isDirectoryExistsAndNotEmpty(path string) (bool, error) {
 
 func resolveTargetIdeHome(config config.Config) string {
 	ideConfig := config.GetIDE()
-	return path.Join(config.CacheDir(), "ideConfig", sanitizePath(ideConfig.Name()+"-"+ideConfig.Build()))
+	//TODO: resolve here the right directory for the IDE, current Version() or Build may not be known
+	return path.Join(config.CacheDir(), "ide", sanitizePath(ideConfig.Name()+"-"+ideConfig.Version()))
+}
+
+func ResolveLocalDownloadFileName(localConfig config.Config, remoteIde feed_api.RemoteIDE) string {
+	ideDir := sanitizePath(remoteIde.Name()+"-"+remoteIde.Build()) + "." + remoteIde.PackageType()
+	return path.Join(localConfig.CacheDir(), "download", ideDir)
 }
 
 type ResolveLocallyAvailableIdeNotFound struct{}

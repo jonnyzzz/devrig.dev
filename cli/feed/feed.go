@@ -2,14 +2,24 @@ package feed
 
 import (
 	"cli/config"
+	"cli/feed_api"
 	"context"
 	"fmt"
 )
 
-type RemoteIDE interface {
+func (entry *feedEntry) Name() string {
+	return entry.NameV
 }
 
-func ResolveRemoteIdeByConfig(ideRequest config.IDEConfig) (RemoteIDE, error) {
+func (entry *feedEntry) Build() string {
+	return entry.BuildV
+}
+
+func (entry *feedEntry) PackageType() string {
+	return entry.Package.Type
+}
+
+func ResolveRemoteIdeByConfig(ideRequest config.IDEConfig) (feed_api.RemoteIDE, error) {
 	entries, err := downloadAndProcessFeedImpl(context.Background(), getFeedUrls())
 	if err != nil {
 		return nil, err
@@ -20,7 +30,7 @@ func ResolveRemoteIdeByConfig(ideRequest config.IDEConfig) (RemoteIDE, error) {
 
 	for _, p := range entries {
 		entry := p
-		if entry.Name != ideRequest.Name() {
+		if entry.NameV != ideRequest.Name() {
 			continue
 		}
 
@@ -28,7 +38,7 @@ func ResolveRemoteIdeByConfig(ideRequest config.IDEConfig) (RemoteIDE, error) {
 			continue
 		}
 
-		if len(ideRequest.Build()) > 0 && ideRequest.Build() != entry.Build {
+		if len(ideRequest.Build()) > 0 && ideRequest.Build() != entry.BuildV {
 			continue
 		}
 
@@ -41,5 +51,5 @@ func ResolveRemoteIdeByConfig(ideRequest config.IDEConfig) (RemoteIDE, error) {
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("IDE is not found in feed. Name: %s", ideRequest.Name())
+	return nil, fmt.Errorf("IDE is not found in feed. NameV: %s", ideRequest.Name())
 }

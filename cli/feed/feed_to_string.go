@@ -2,15 +2,19 @@ package feed
 
 import "fmt"
 
-func (item *feedEntry) ToString() string {
+func (entry *feedEntry) String() string {
+	return entry.ToString()
+}
+
+func (entry *feedEntry) ToString() string {
 	var result string
 
-	result += fmt.Sprintf("Product: %s\n", item.Name)
-	result += fmt.Sprintf("  Version: %s (Build: %s)\n", item.Version, item.Build)
-	result += fmt.Sprintf("  Released: %s\n", item.Released)
+	result += fmt.Sprintf("Product: %s\n", entry.NameV)
+	result += fmt.Sprintf("  Version: %s (BuildV: %s)\n", entry.Version, entry.BuildV)
+	result += fmt.Sprintf("  Released: %s\n", entry.Released)
 
-	if item.Package != nil {
-		pkg := item.Package
+	if entry.Package != nil {
+		pkg := entry.Package
 		result += "  feedItemPackage:\n"
 		result += fmt.Sprintf("	OS: %s\n", pkg.OS)
 		result += fmt.Sprintf("	Type: %s\n", pkg.Type)

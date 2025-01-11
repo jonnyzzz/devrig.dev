@@ -23,13 +23,13 @@ func parseTestConfig(t *testing.T, yaml string) (*ideConfigImpl, error) {
 func assertIDEConfig(t *testing.T, got *ideConfigImpl, want *ideConfigImpl) {
 	t.Helper()
 	if got.Name() != want.Name() {
-		t.Errorf("Name() = %v, want %v", got.Name(), want.Name())
+		t.Errorf("NameV() = %v, want %v", got.Name(), want.Name())
 	}
 	if got.Version() != want.Version() {
 		t.Errorf("Version() = %v, want %v", got.Version(), want.Version())
 	}
 	if got.Build() != want.Build() {
-		t.Errorf("Build() = %v, want %v", got.Build(), want.Build())
+		t.Errorf("BuildV() = %v, want %v", got.Build(), want.Build())
 	}
 }
 
