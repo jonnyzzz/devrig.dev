@@ -3,6 +3,7 @@ package unpack
 import (
 	"cli/config"
 	"cli/feed_api"
+	"cli/unpack_api"
 	"fmt"
 	"os"
 	"os/exec"
@@ -11,6 +12,8 @@ import (
 )
 
 type unpackedDownloadedRemoteIdeDmg struct {
+	unpack_api.UnpackedDownloadedRemoteIde
+
 	appHome   string
 	remoteIde feed_api.RemoteIDE
 }

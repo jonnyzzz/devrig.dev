@@ -16,15 +16,19 @@ type nestedFeed struct {
 }
 
 type feedEntry struct {
-	NameV        string                `json:"name"`
-	BuildV       string                `json:"build"`
-	MajorVersion *feedItemMajorVersion `json:"major_version"`
-	Version      string                `json:"version"`
-	Released     string                `json:"released"`
-	Package      *feedItemPackage      `json:"package"`
-	Quality      *feedItemQuality      `json:"feedItemQuality"`
-	OrderEntry   int64                 `json:"order_value"`
-	RawJSON      json.RawMessage       `json:"-"` // Store original JSON
+	NameV        string                    `json:"name"`
+	BuildV       string                    `json:"build"`
+	MajorVersion *feedItemMajorVersion     `json:"major_version"`
+	Version      string                    `json:"version"`
+	Released     string                    `json:"released"`
+	Package      *feedItemPackage          `json:"package"`
+	Quality      *feedItemQuality          `json:"feedItemQuality"`
+	OrderEntry   int64                     `json:"order_value"`
+	IntelliJ     *feedItemIntelliJMetadata `json:"intellij_platform"`
+}
+
+type feedItemIntelliJMetadata struct {
+	IntelliJProductCode string `json:"product_code"`
 }
 
 type feedItemMajorVersion struct {

@@ -8,6 +8,9 @@ type RemoteIDE interface {
 	Name() string
 	Build() string
 	PackageType() string
+
+	// IdeType returns `intellij` for IntelliJ ides
+	IdeType() string
 }
 
 type DownloadedRemoteIde interface {

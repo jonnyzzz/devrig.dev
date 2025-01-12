@@ -4,20 +4,14 @@ import (
 	"cli/config"
 	"cli/feed_api"
 	"cli/layout"
+	"cli/unpack_api"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 )
 
-type UnpackedDownloadedRemoteIde interface {
-	fmt.Stringer
-
-	UnpackedHome() string
-	RemoteIde() feed_api.RemoteIDE
-}
-
-func UnpackIde(localConfig config.Config, request feed_api.DownloadedRemoteIde) (UnpackedDownloadedRemoteIde, error) {
+func UnpackIde(localConfig config.Config, request feed_api.DownloadedRemoteIde) (unpack_api.UnpackedDownloadedRemoteIde, error) {
 	targetDir := layout.ResolveLocalHome(localConfig, request.RemoteIde())
 	fmt.Println("Unpacking ", request.TargetFile(), " to ", targetDir, "...")
 

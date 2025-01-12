@@ -19,6 +19,13 @@ func (entry *feedEntry) PackageType() string {
 	return entry.Package.Type
 }
 
+func (entry *feedEntry) IdeType() string {
+	if entry.IntelliJ != nil {
+		return "intellij"
+	}
+	return "unknown"
+}
+
 func ResolveRemoteIdeByConfig(ideRequest config.IDEConfig) (feed_api.RemoteIDE, error) {
 	entries, err := downloadAndProcessFeedImpl(context.Background(), getFeedUrls())
 	if err != nil {
