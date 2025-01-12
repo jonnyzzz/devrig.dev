@@ -91,7 +91,7 @@ func unpackDmg(localConfig config.Config, request feed_api.DownloadedRemoteIde, 
 		// Remove quarantine attributes
 		xattrCmd := exec.Command("xattr", "-rd", "com.apple.quarantine", dstPath)
 		if err := xattrCmd.Run(); err != nil {
-			fmt.Printf("failed to remove quarantine attributes: %w\n", err)
+			fmt.Printf("failed to remove quarantine attributes: %s\n", err.Error())
 		}
 	}
 
