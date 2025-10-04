@@ -1,4 +1,4 @@
-# IDE Wrapper
+# devrig.dev
 [![Apache 2.0 License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 The command to start the AI-empowered development environment of your project.
@@ -11,7 +11,7 @@ Including IntelliJ, Cursor, VSCode, and any other IDEs.
 Create the world's most popular universal tool to start a pre-configured, fine-tailored development environment for humans and agents.
 We make new developers and agents ready for coding after only one command: `./idew start`.
 
-## What is IDE Wrapper?
+## What is devrig?
 
 IDE Wrapper is a universal command-line tool that automatically downloads, configures, and launches pre-configured development environments for your projects.
 One command (`./idew start`) gets any developer or AI agent ready to code with the exact IDE setup their project needs.
