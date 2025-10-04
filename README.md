@@ -1,15 +1,10 @@
 # IDE Wrapper
+[![Apache 2.0 License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 The command to start the AI-empowered development environment of your project.
 With all possible IDEs, extensions, and configurations.
 With local development, Docker, and remote development.
 Including IntelliJ, Cursor, VSCode, and any other IDEs.
-
-# License
-
-This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
-
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 ## Goal
 
