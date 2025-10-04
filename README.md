@@ -1,8 +1,9 @@
 # IDE Wrapper
 
-A command-line tool that helps download, install, manage, and configure IDE and development environments for your project. 
-Inspired by the simplicity of Gradle and Maven Wrappers, this tool enables a straightforward setup for both new and experienced
-contributors—simply include the binary and a config file in your repository, and you’re good to go!
+The command to start the AI-empowered development environment of your project.
+With all possible IDEs, extensions, and configurations.
+With local development, Docker, and remote development.
+Including IntelliJ, Cursor, VSCode, and any other IDEs.
 
 # License
 
@@ -12,24 +13,45 @@ This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENS
 
 ## Goal
 
-We are building the universal tool to help configuring and opening
-projects in IDEs. 
+Create the world's most popular universal tool to start a pre-configured, fine-tailored development environment for humans and agents.
+We make new developers and agents ready for coding after only one command: `./idew start`.
 
-## Proof of Concept
+## What is IDE Wrapper?
 
-The tool looks for the `.ides.yaml` file for configuration. 
+IDE Wrapper is a universal command-line tool that automatically downloads, configures, and launches pre-configured development environments for your projects.
+One command (`./idew start`) gets any developer or AI agent ready to code with the exact IDE setup their project needs.
 
-The IDE is downloaded and configured under the `.ides` directory next to the `.ides.yaml` file. 
+**Problem it solves:** No more "it works on my machine" issues. No manual IDE installation, extension hunting, or configuration copying. Perfect for:
+- Onboarding new developers in minutes
+- AI coding agents needing consistent environments  
+- Open-source projects with complex setup requirements
+- Teams wanting standardized development environments
+- Easy transition to remote development or docker environments
 
-The file is of the following format, it allows to specify the IDE which is used to open the project, e.g. 
+## Project Status
+
+⚠️ **Alpha/Proof of Concept** - This project is in early development. Everything can change.
+
+The tool looks for the `.idew.yaml` file for configuration. 
+
+The IDE is downloaded and configured under the `.idew` directory next to the `.idew.yaml` file. 
+
+The file is of the following format, which allows specifying the IDE that is used to open the project, e.g. 
 
 ```yaml
+wrapper:
+    version: 0.0.1
+    hash: sha-512:<hash>
+
 ide:
     name: GoLand        #IDE which is needed
     version: 2024.3     #public version
+    hash: sha-512:<hash>
     #build: optional build number
     #more ide-spefic parameters 
 ```
+
+The tool is compatible with [devcontainer](https://containers.dev/) to provide configurations.
 
 # Contribute
 
