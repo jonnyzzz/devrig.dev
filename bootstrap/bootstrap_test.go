@@ -321,3 +321,131 @@ func TestLocalBinary_InvalidHash(t *testing.T) {
 		},
 	})
 }
+
+// PowerShell-specific tests
+
+func TestPS1_HashMismatch_LocalFile(t *testing.T) {
+	// Generate config with wrong hash
+	configPath := setupTestConfig(t, "ps1-mismatch", "https://devrig.dev/", "badhash1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890")
+
+	runAndAssert(t, Run{
+		env: Env{"devrig.ps1", "mcr.microsoft.com/dotnet/sdk:8.0"},
+		environmentVars: []string{
+			"DEVRIG_DEBUG_NO_EXEC=1",
+			"DEVRIG_CONFIG=" + configPath,
+			"DEVRIG_OS=linux",
+			"DEVRIG_CPU=x86_64",
+		},
+		commandline:      []string{},
+		expectedExitCode: 7,
+		expectedOutput: []string{
+			"[ERROR] Downloaded binary checksum mismatch",
+			"[ERROR] Expected:",
+			"[ERROR] Actual:",
+		},
+	})
+}
+
+func TestPS1_Download_Success(t *testing.T) {
+	// Use a stable URL with unchanging content
+	testURL := "https://raw.githubusercontent.com/github/gitignore/main/Python.gitignore"
+
+	// Download file and calculate hash
+	_, hash, err := downloadFile(testURL)
+	if err != nil {
+		t.Skipf("Skipping test, cannot download file: %v", err)
+	}
+
+	configPath := setupTestConfig(t, "ps1-download", testURL, hash)
+
+	runAndAssert(t, Run{
+		env: Env{"devrig.ps1", "mcr.microsoft.com/dotnet/sdk:8.0"},
+		environmentVars: []string{
+			"DEVRIG_DEBUG_NO_EXEC=1",
+			"DEVRIG_CONFIG=" + configPath,
+			"DEVRIG_OS=linux",
+			"DEVRIG_CPU=x86_64",
+		},
+		commandline:      []string{},
+		expectedExitCode: 45,
+		expectedOutput: []string{
+			"[INFO] Devrig binary not found, downloading...",
+			"[INFO] Verifying downloaded binary checksum...",
+			"[INFO] Installing devrig binary...",
+			"[INFO] Devrig binary installed successfully",
+		},
+	})
+}
+
+func TestPS1_Download_IncorrectHash(t *testing.T) {
+	// Use a stable URL but with incorrect hash
+	testURL := "https://raw.githubusercontent.com/github/gitignore/main/Python.gitignore"
+	configPath := setupTestConfig(t, "ps1-bad-hash", testURL, "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000")
+
+	runAndAssert(t, Run{
+		env: Env{"devrig.ps1", "mcr.microsoft.com/dotnet/sdk:8.0"},
+		environmentVars: []string{
+			"DEVRIG_DEBUG_NO_EXEC=1",
+			"DEVRIG_CONFIG=" + configPath,
+			"DEVRIG_OS=linux",
+			"DEVRIG_CPU=x86_64",
+		},
+		commandline:      []string{},
+		expectedExitCode: 7,
+		expectedOutput: []string{
+			"[INFO] Devrig binary not found, downloading...",
+			"[ERROR] Downloaded binary checksum mismatch",
+		},
+	})
+}
+
+func TestPS1_LocalBinary_ValidHash(t *testing.T) {
+	// Create a test binary and get its hash
+	testBinary := []byte("#!/bin/sh\necho 'test binary'\n")
+	hash := sha512.Sum512(testBinary)
+	hashStr := hex.EncodeToString(hash[:])
+
+	// Create config with the correct hash
+	configPath := setupTestConfig(t, "ps1-local-valid", "https://example.com/binary", hashStr)
+
+	runAndAssert(t, Run{
+		env: Env{"devrig.ps1", "mcr.microsoft.com/dotnet/sdk:8.0"},
+		environmentVars: []string{
+			"DEVRIG_DEBUG_NO_EXEC=1",
+			"DEVRIG_CONFIG=" + configPath,
+			"DEVRIG_OS=linux",
+			"DEVRIG_CPU=x86_64",
+			"DEVRIG_TEST_CREATE_LOCAL_BINARY=valid",
+		},
+		commandline:      []string{},
+		expectedExitCode: 45,
+		expectedOutput: []string{
+			hashStr,
+		},
+	})
+}
+
+func TestPS1_LocalBinary_InvalidHash(t *testing.T) {
+	// Use incorrect hash for the binary
+	wrongHash := "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+
+	// Create config with wrong hash
+	configPath := setupTestConfig(t, "ps1-local-invalid", "https://example.com/binary", wrongHash)
+
+	runAndAssert(t, Run{
+		env: Env{"devrig.ps1", "mcr.microsoft.com/dotnet/sdk:8.0"},
+		environmentVars: []string{
+			"DEVRIG_DEBUG_NO_EXEC=1",
+			"DEVRIG_CONFIG=" + configPath,
+			"DEVRIG_OS=linux",
+			"DEVRIG_CPU=x86_64",
+			"DEVRIG_TEST_CREATE_LOCAL_BINARY=invalid",
+		},
+		commandline:      []string{},
+		expectedExitCode: 7,
+		expectedOutput: []string{
+			"[ERROR] Downloaded binary checksum mismatch",
+			"[ERROR] Expected: " + wrongHash,
+		},
+	})
+}
