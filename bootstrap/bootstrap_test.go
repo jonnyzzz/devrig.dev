@@ -272,3 +272,52 @@ func TestDownload_IncorrectHash(t *testing.T) {
 		},
 	})
 }
+
+func TestLocalBinary_ValidHash(t *testing.T) {
+	// Create a test binary and get its hash
+	testBinary := []byte("#!/bin/sh\necho 'test binary'\n")
+	hash := sha512.Sum512(testBinary)
+	hashStr := hex.EncodeToString(hash[:])
+
+	// Create config with the correct hash
+	configPath := setupTestConfig(t, "local-valid", "https://example.com/binary", hashStr)
+
+	runAndAssert(t, Run{
+		env: Env{"devrig", "ubuntu:18.04"},
+		environmentVars: []string{
+			"DEVRIG_DEBUG_NO_EXEC=1",
+			"DEVRIG_CONFIG=" + configPath,
+			"DEVRIG_CPU=x86_64",
+			"DEVRIG_TEST_CREATE_LOCAL_BINARY=valid",
+		},
+		commandline:      []string{},
+		expectedExitCode: 45,
+		expectedOutput: []string{
+			hashStr,
+		},
+	})
+}
+
+func TestLocalBinary_InvalidHash(t *testing.T) {
+	// Use incorrect hash for the binary
+	wrongHash := "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+
+	// Create config with wrong hash
+	configPath := setupTestConfig(t, "local-invalid", "https://example.com/binary", wrongHash)
+
+	runAndAssert(t, Run{
+		env: Env{"devrig", "ubuntu:18.04"},
+		environmentVars: []string{
+			"DEVRIG_DEBUG_NO_EXEC=1",
+			"DEVRIG_CONFIG=" + configPath,
+			"DEVRIG_CPU=x86_64",
+			"DEVRIG_TEST_CREATE_LOCAL_BINARY=invalid",
+		},
+		commandline:      []string{},
+		expectedExitCode: 7,
+		expectedOutput: []string{
+			"[ERROR] Downloaded binary checksum mismatch",
+			"[ERROR] Expected: " + wrongHash,
+		},
+	})
+}

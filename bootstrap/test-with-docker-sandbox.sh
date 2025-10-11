@@ -50,6 +50,24 @@ case "${DEVRIG_CONFIG:-}" in
     ;;
 esac
 
+# For local binary tests, create test binaries
+if [ "${DEVRIG_TEST_CREATE_LOCAL_BINARY:-}" != "" ]; then
+  mkdir -p .devrig
+
+  # Get the hash from the config file
+  if [ -f "${DEVRIG_CONFIG}" ]; then
+    hash=$(grep "sha512:" "${DEVRIG_CONFIG}" | sed 's/.*sha512:[[:space:]]*["'\'']*\([^"'\'']*\)["'\'']*.*/\1/')
+
+    # Create the binary path based on hash
+    binary_path=".devrig/devrig-linux-x86_64-${hash}"
+
+    # Create test binary content
+    echo '#!/bin/sh' > "$binary_path"
+    echo "echo 'test binary'" >> "$binary_path"
+    chmod +x "$binary_path"
+  fi
+fi
+
 case "$BOOTSTRAP_SCRIPT" in
   *.ps1)
     exec pwsh "./$BOOTSTRAP_SCRIPT" "$@"
