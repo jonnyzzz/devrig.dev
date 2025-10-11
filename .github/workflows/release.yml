@@ -2,13 +2,6 @@ name: Build Release
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'VERSION'
-      - 'cli/**'
-      - '.github/workflows/release.yml'
 
 permissions:
   contents: write
