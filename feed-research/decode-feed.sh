@@ -11,9 +11,7 @@ SIGNED_FILE="release.feed.xz.signed"
 XZ_FILE="release.feed.xz"
 FEED_FILE="release.feed"
 
-rm $SIGNED_FILE || true
-rm $XZ_FILE || true
-rm $FEED_FILE || true
+rm -f "$SIGNED_FILE" "$XZ_FILE" "$FEED_FILE"
 
 echo "1) Downloading signed feed from JetBrains..."
 curl -L -o "$SIGNED_FILE" "$URL"
@@ -31,7 +29,7 @@ echo "3) Checking file type..."
 file "$XZ_FILE"
 
 echo
-echo "5) Decompressing fully to $FEED_FILE..."
+echo "4) Decompressing fully to $FEED_FILE..."
 xz -d "$XZ_FILE"
 
 echo
