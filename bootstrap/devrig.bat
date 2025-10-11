@@ -1,4 +1,7 @@
 @echo off
+REM
+REM see https://devrig.dev for more details
+REM
 REM devrig.bat - Windows batch wrapper for devrig.ps1
 REM This calls the PowerShell script with all arguments
 

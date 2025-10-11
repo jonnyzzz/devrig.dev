@@ -1,5 +1,6 @@
-# devrig.ps1 - Bootstrap script for Windows
-# This script downloads, verifies, and executes the devrig binary
+#
+# see https://devrig.dev for more details
+#
 
 param(
     [Parameter(ValueFromRemainingArguments=$true)]
