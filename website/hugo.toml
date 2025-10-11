@@ -5,7 +5,7 @@ theme = 'devrig-minimal'
 
 [params]
   description = 'The command to start the AI-empowered development environment of your project'
-  github = 'https://github.com/jonnyzzz/ide-wrapper'
+  github = 'https://github.com/jonnyzzz/devrig.dev'
 
 [markup.goldmark.renderer]
   unsafe = true
@@ -30,5 +30,5 @@ theme = 'devrig-minimal'
 
 [[menus.main]]
   name = 'Contribute'
-  url = 'https://github.com/jonnyzzz/ide-wrapper'
+  url = 'https://github.com/jonnyzzz/devrig.dev'
   weight = 4
