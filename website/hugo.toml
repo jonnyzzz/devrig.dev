@@ -5,10 +5,13 @@ theme = 'devrig-minimal'
 
 [params]
   description = 'The command to start the AI-empowered development environment of your project'
-  github = 'https://github.com/jonnyzzz/devrig.dev'
+  github = 'https://github.com/jonnyzzz/ide-wrapper'
+
+[markup.goldmark.renderer]
+  unsafe = true
 
 [outputs]
-  home = ['HTML', 'JSON']
+  home = ['HTML']
 
 [[menus.main]]
   name = 'Home'
