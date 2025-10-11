@@ -1,3 +1,11 @@
+:root {
+    --electric-cyan: #00E6FF;
+    --aqua-mint: #00FFC2;
+    --slate-900: #0B0F14;
+    --slate-700: #16212B;
+    --white: #FFFFFF;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -5,10 +13,10 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
     line-height: 1.6;
-    color: #333;
-    background-color: #f5f5f5;
+    color: var(--white);
+    background-color: var(--slate-900);
 }
 
 .container {
@@ -18,8 +26,8 @@ body {
 }
 
 header {
-    background: #fff;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    background: var(--slate-700);
+    box-shadow: 0 2px 8px rgba(0, 230, 255, 0.1);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -36,10 +44,24 @@ nav .container {
 }
 
 .logo {
+    font-family: 'JetBrains Mono', 'Fira Code', SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 1.5rem;
     font-weight: bold;
-    color: #2563eb;
+    color: var(--electric-cyan);
     text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.logo-image {
+    height: 48px;
+    width: 48px;
+    transition: transform 0.2s;
+}
+
+.logo:hover .logo-image {
+    transform: scale(1.05);
 }
 
 .nav-links {
@@ -49,37 +71,37 @@ nav .container {
 }
 
 .nav-links a {
-    color: #333;
+    color: var(--white);
     text-decoration: none;
     font-weight: 500;
 }
 
 .nav-links a:hover {
-    color: #2563eb;
+    color: var(--aqua-mint);
 }
 
 main {
-    background: #fff;
+    background: var(--slate-900);
     margin: 2rem auto;
     padding: 2rem 0;
     min-height: calc(100vh - 200px);
 }
 
 article h1 {
-    color: #1e293b;
+    color: var(--electric-cyan);
     margin-bottom: 1rem;
     font-size: 2.5rem;
 }
 
 article h2 {
-    color: #334155;
+    color: var(--aqua-mint);
     margin-top: 2rem;
     margin-bottom: 1rem;
     font-size: 1.8rem;
 }
 
 article h3 {
-    color: #475569;
+    color: var(--white);
     margin-top: 1.5rem;
     margin-bottom: 0.75rem;
     font-size: 1.3rem;
@@ -99,44 +121,50 @@ article li {
 }
 
 article a {
-    color: #2563eb;
+    color: var(--electric-cyan);
     text-decoration: none;
 }
 
 article a:hover {
+    color: var(--aqua-mint);
     text-decoration: underline;
 }
 
 pre {
-    background: #1e293b;
-    color: #e2e8f0;
+    background: var(--slate-700);
+    color: var(--white);
     padding: 1rem;
     border-radius: 4px;
     overflow-x: auto;
     margin-bottom: 1rem;
+    border: 1px solid rgba(0, 230, 255, 0.2);
 }
 
 code {
-    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-family: 'JetBrains Mono', 'Fira Code', SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 0.9rem;
 }
 
 p code {
-    background: #e2e8f0;
-    color: #1e293b;
+    background: var(--slate-700);
+    color: var(--electric-cyan);
     padding: 0.2rem 0.4rem;
     border-radius: 3px;
 }
 
 footer {
-    background: #1e293b;
-    color: #e2e8f0;
+    background: var(--slate-700);
+    color: var(--white);
     padding: 2rem 0;
     text-align: center;
 }
 
 footer a {
-    color: #60a5fa;
+    color: var(--electric-cyan);
+}
+
+footer a:hover {
+    color: var(--aqua-mint);
 }
 
 .home h1:first-of-type {
@@ -146,8 +174,8 @@ footer a {
 
 /* React Components Styling */
 .platform-detector {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    background: var(--slate-700);
+    border: 1px solid rgba(0, 230, 255, 0.3);
     border-radius: 8px;
     padding: 1.5rem;
     margin: 2rem 0;
@@ -155,17 +183,17 @@ footer a {
 
 .detected-platform h3 {
     margin-top: 0;
-    color: #1e293b;
+    color: var(--electric-cyan);
 }
 
 .platform-name {
     font-size: 1.2rem;
-    color: #2563eb;
+    color: var(--aqua-mint);
 }
 
 .platform-info code {
-    background: #1e293b;
-    color: #e2e8f0;
+    background: var(--slate-900);
+    color: var(--electric-cyan);
     padding: 0.2rem 0.4rem;
     border-radius: 3px;
 }
@@ -190,18 +218,19 @@ footer a {
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    background: #fff;
-    border: 2px solid #e2e8f0;
+    background: var(--slate-700);
+    border: 2px solid rgba(0, 230, 255, 0.3);
     border-radius: 8px;
     text-decoration: none;
-    color: #1e293b;
+    color: var(--white);
     transition: all 0.2s;
 }
 
 .download-button:hover {
-    border-color: #2563eb;
+    border-color: var(--electric-cyan);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 230, 255, 0.3);
+    background: rgba(0, 230, 255, 0.1);
 }
 
 .button-icon {
@@ -214,17 +243,17 @@ footer a {
 
 .button-title {
     font-weight: bold;
-    color: #1e293b;
+    color: var(--electric-cyan);
 }
 
 .button-subtitle {
     font-size: 0.875rem;
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .version-info {
     font-size: 0.875rem;
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.6);
     margin-top: 1rem;
 }
 

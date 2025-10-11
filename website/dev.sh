@@ -15,8 +15,5 @@ echo ""
 
 cd "$SCRIPT_DIR"
 
-# Generate download.md before starting
-docker run --rm -v "$SCRIPT_DIR:/src" -w /src node:20.18.1-alpine3.20 sh -c "node scripts/generate-download.js"
-
 # Start services with docker-compose
 docker-compose -f docker-compose.dev.yml up
