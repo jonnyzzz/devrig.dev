@@ -1,3 +1,4 @@
+name: devrig-website-dev
 version: '3.8'
 
 services:
