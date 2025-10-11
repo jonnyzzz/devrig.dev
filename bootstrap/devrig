@@ -1,0 +1,225 @@
+#!/bin/sh
+
+set -eu
+
+# Determine script directory
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Configuration
+DEVRIG_CONFIG="${DEVRIG_CONFIG:-${SCRIPT_DIR}/devrig.yaml}"
+DEVRIG_HOME="${DEVRIG_HOME:-${SCRIPT_DIR}/.devrig}"
+
+# Log configuration overrides
+if [ "${DEVRIG_CONFIG}" != "${SCRIPT_DIR}/devrig.yaml" ]; then
+    echo "[INFO] Using custom config location: DEVRIG_CONFIG=${DEVRIG_CONFIG}"
+fi
+
+if [ "${DEVRIG_HOME}" != "${SCRIPT_DIR}/.devrig" ]; then
+    echo "[INFO] Using custom devrig home: DEVRIG_HOME=${DEVRIG_HOME}"
+fi
+
+if [ ! -f "$DEVRIG_CONFIG" ]; then
+    echo "[ERROR] Configuration file not found: $DEVRIG_CONFIG" >&2
+    exit 1
+fi
+
+if [ "${DEVRIG_OS:-none}" = "none" ]; then
+  case "$(uname -s)" in
+      Linux*)  DEVRIG_OS="linux";;
+      Darwin*) DEVRIG_OS="darwin";;
+      *)       echo "[ERROR] Unsupported OS: $(uname -s)" >&2; exit 1;;
+  esac
+else
+  echo "[INFO] Using custom OS: DEVRIG_OS=${DEVRIG_OS}"
+fi
+
+if [ "${DEVRIG_CPU:-none}" = "none" ]; then
+  case "$(uname -m)" in
+      x86_64|amd64)  DEVRIG_CPU="x86_64";;
+      arm64|aarch64) DEVRIG_CPU="arm64";;
+      *)             echo "[ERROR] Unsupported CPU: $(uname -m)" >&2; exit 1;;
+  esac
+else
+  echo "[INFO] Using custom CPU: DEVRIG_CPU=${DEVRIG_CPU}"
+fi
+
+in_devrig=0
+in_binaries=0
+in_platform=0
+url=""
+sha512=""
+
+while IFS= read -r line; do
+    if [ ! -z "$url" ] && [ ! -z "$sha512" ]; then
+        #make sure we are not reading next url or sha from the file
+        break
+    fi
+
+    case "$line" in
+        devrig:*)
+            in_devrig=1
+            ;;
+        *binaries:*)
+            if [ $in_devrig -eq 1 ]; then
+                in_binaries=1
+            fi
+            ;;
+        *${DEVRIG_OS}-${DEVRIG_CPU}:*)
+            if [ $in_binaries -eq 1 ]; then
+                in_platform=1
+            fi
+            ;;
+        *url:*)
+            if [ $in_platform -eq 1 ] && [ "$url" = "" ]; then
+                url=$(echo "$line" | sed 's/.*url:[[:space:]]*["'\'']*\([^"'\'']*\)["'\'']*.*/\1/')
+            fi
+            ;;
+        *sha512:*)
+            if [ $in_platform -eq 1 ] && [ "$sha512" = "" ]; then
+                sha512=$(echo "$line" | sed 's/.*sha512:[[:space:]]*["'\'']*\([^"'\'']*\)["'\'']*.*/\1/')
+            fi
+            ;;
+    esac
+done < "$DEVRIG_CONFIG"
+
+if [ -z "$url" ] || [ -z "$sha512" ]; then
+    echo "[ERROR] Could not find devrig binary configuration for platform: ${DEVRIG_OS} ${DEVRIG_CPU}" >&2
+    echo "[ERROR] Please check $DEVRIG_CONFIG" >&2
+    exit 1
+fi
+
+if [ "${DEVRIG_DEBUG_YAML_DOWNLOAD:-no}" = "1" ]; then
+  echo "${url}"
+  echo "${sha512}"
+  exit 44
+fi
+
+
+
+# Extract version from config if present
+version=""
+
+# Compute short hash (first 8 characters)
+short_hash=$(echo "$sha512" | cut -c1-8)
+
+# Construct binary directory path
+binary_dir="${DEVRIG_HOME}/devrig-${DEVRIG_OS}-${DEVRIG_CPU}-${version}${short_hash}"
+binary_path="${binary_dir}/devrig"
+
+# Create devrig home if it doesn't exist
+mkdir -p "$DEVRIG_HOME"
+
+# Check if binary exists and is valid
+if [ -f "$binary_path" ]; then
+    echo "[INFO] Found existing devrig binary: $binary_path"
+
+    # Compute hash
+    if command -v sha512sum >/dev/null 2>&1; then
+        actual_hash=$(sha512sum "$binary_path" | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+        actual_hash=$(shasum -a 256 "$binary_path" | awk '{print $1}')
+    else
+        echo "[ERROR] Neither sha512sum nor shasum found. Cannot verify checksum." >&2
+        exit 1
+    fi
+
+    # Normalize to lowercase
+    actual_hash=$(echo "$actual_hash" | tr '[:upper:]' '[:lower:]')
+    expected_hash=$(echo "$sha512" | tr '[:upper:]' '[:lower:]')
+
+    if [ "$actual_hash" = "$expected_hash" ]; then
+        echo "[INFO] Binary checksum verified: $short_hash"
+    else
+        echo "[ERROR] Binary checksum mismatch!" >&2
+        echo "[ERROR] Expected: $expected_hash" >&2
+        echo "[ERROR] Actual:   $actual_hash" >&2
+        echo "[ERROR] Removing corrupted binary and re-downloading..." >&2
+        rm -rf "$binary_dir"
+        # Restart the script to download fresh binary
+        exec "$0" "$@"
+    fi
+else
+    echo "[INFO] Devrig binary not found, downloading..."
+
+    # Create temporary directory for download
+    temp_dir="${DEVRIG_HOME}/devrig-${DEVRIG_OS}-${DEVRIG_CPU}-${version}${short_hash}-downloading"
+    temp_binary="${temp_dir}/devrig"
+
+    # Clean up any previous failed downloads
+    rm -rf "$temp_dir"
+    mkdir -p "$temp_dir"
+
+    # Download binary with retries
+    retries=3
+    attempt=0
+    downloaded=0
+
+    while [ $attempt -lt $retries ]; do
+        attempt=$((attempt + 1))
+        echo "[INFO] Downloading devrig binary (attempt $attempt/$retries)..."
+
+        if command -v curl >/dev/null 2>&1; then
+            if curl -fSL --retry 2 --connect-timeout 30 -o "$temp_binary" "$url"; then
+                downloaded=1
+                break
+            fi
+        elif command -v wget >/dev/null 2>&1; then
+            if wget --tries=2 --timeout=30 --continue -O "$temp_binary" "$url"; then
+                downloaded=1
+                break
+            fi
+        else
+            echo "[ERROR] Neither curl nor wget found. Cannot download file." >&2
+            exit 1
+        fi
+
+        if [ $attempt -lt $retries ]; then
+            echo "[WARNING] Download failed, retrying in 2 seconds..."
+            sleep 2
+        fi
+    done
+
+    if [ $downloaded -eq 0 ]; then
+        echo "[ERROR] Failed to download devrig binary after $retries attempts" >&2
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+
+    # Verify downloaded binary hash
+    echo "[INFO] Verifying downloaded binary checksum..."
+    if command -v sha512sum >/dev/null 2>&1; then
+        actual_hash=$(sha512sum "$temp_binary" | awk '{print $1}')
+    elif command -v shasum >/dev/null 2>&1; then
+        actual_hash=$(shasum -a 256 "$temp_binary" | awk '{print $1}')
+    else
+        echo "[ERROR] Neither sha512sum nor shasum found. Cannot verify checksum." >&2
+        exit 1
+    fi
+
+    # Normalize to lowercase
+    actual_hash=$(echo "$actual_hash" | tr '[:upper:]' '[:lower:]')
+    expected_hash=$(echo "$sha512" | tr '[:upper:]' '[:lower:]')
+
+    if [ "$actual_hash" != "$expected_hash" ]; then
+        echo "[ERROR] Downloaded binary checksum mismatch!" >&2
+        echo "[ERROR] Expected: $expected_hash" >&2
+        echo "[ERROR] Actual:   $actual_hash" >&2
+        rm -rf "$temp_dir"
+        exit 1
+    fi
+
+    echo "[INFO] Binary checksum verified: $short_hash"
+
+    # Make binary executable
+    chmod +x "$temp_binary"
+
+    # Move to production location
+    echo "[INFO] Installing devrig binary..."
+    mv "$temp_dir" "$binary_dir"
+
+    echo "[INFO] Devrig binary installed successfully"
+fi
+
+# Execute devrig binary with all passed arguments and environment
+echo "[INFO] Executing devrig..."
+exec "$binary_path" "$@"
