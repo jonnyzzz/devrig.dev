@@ -54,6 +54,34 @@ The `version` is optional and if present ends with `-`.
   - it checks the hash sum of the downloaded binary against the hash sum from the `devrig.yaml`
   - if the hash sum is not matching, the error is shown and the tool exists with error message
   - the downloaded and validated binary is moved to the production location under the `.devrig` folder
-  - tool restarts to apply the happy path above and to execute the tool.
+  - the tool restarts to apply the happy path above and to execute the tool.
 
+# Bootstrap Loop
+
+The bootstrap script is executed to download a functional `devrig` binary.
+
+The binary supports the `./devrig init <target folder>` command to create the `.dervig`
+environment for the new project.
+
+It supports the `./devrig version <command>` (or `--v`) command to
+show the current version of the `devrig` binary and to check for updates.
+
+It supports the `./devrig update <command>` to update the current `devrig` binary
+to the new version, the update changes the `devrig.yaml` file to include new
+version of the tool, version, download URL, and hash sums. 
+
+## How the update works
+
+We encode public keys into each `devrig` release, which are needed to verify
+the original updates from the `https://devrig.dev/download/latest.json` file.
+It is done to lower the probability of an upgrade to a malicious version.
+
+The `latest.json` file contains the list of all recent releases, release notes, versions.
+We keep signature for that file in the `https://devrig.dev/download/latest.json.sig` file.
+We believe that `sha512` is enough to protect the actual binaries, so we only sign
+the sha512 signatures inside the `latest.json` file.`
+
+The update process can potentially change the code of the `devrig` scripts in the
+root of the repository. We bundle these scripts into the actual `devrig` binary to allow
+the `init` command to work without any additional dependencies.
 
