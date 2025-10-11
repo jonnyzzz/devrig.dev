@@ -1,0 +1,36 @@
+{
+  "version": "0.0.1",
+  "releaseDate": "2025-01-01T00:00:00Z",
+  "releases": [
+    {
+      "os": "linux",
+      "arch": "x86_64",
+      "url": "https://devrig.dev/download/devrig-linux-x86_64",
+      "sha512": "sha-512:placeholder-hash-linux-x86_64"
+    },
+    {
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://devrig.dev/download/devrig-linux-arm64",
+      "sha512": "sha-512:placeholder-hash-linux-arm64"
+    },
+    {
+      "os": "darwin",
+      "arch": "arm64",
+      "url": "https://devrig.dev/download/devrig-darwin-arm64",
+      "sha512": "sha-512:placeholder-hash-darwin-arm64"
+    },
+    {
+      "os": "windows",
+      "arch": "x86_64",
+      "url": "https://devrig.dev/download/devrig-windows-x86_64.exe",
+      "sha512": "sha-512:placeholder-hash-windows-x86_64"
+    },
+    {
+      "os": "windows",
+      "arch": "arm64",
+      "url": "https://devrig.dev/download/devrig-windows-arm64.exe",
+      "sha512": "sha-512:placeholder-hash-windows-arm64"
+    }
+  ]
+}

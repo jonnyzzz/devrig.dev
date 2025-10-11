@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  node:
+    image: node:20.18.1-alpine3.20
+    working_dir: /src
+    volumes:
+      - .:/src
+    command: sh -c "npm install && npm run dev"
+    networks:
+      - devrig-net
+
+  hugo:
+    image: hugomods/hugo:0.141.0
+    working_dir: /src
+    volumes:
+      - .:/src
+    ports:
+      - "1313:1313"
+    command: hugo server --bind 0.0.0.0 --buildDrafts --buildFuture --disableFastRender
+    depends_on:
+      - node
+    networks:
+      - devrig-net
+
+networks:
+  devrig-net:

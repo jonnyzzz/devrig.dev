@@ -1,0 +1,22 @@
+{
+  "name": "devrig-website",
+  "version": "1.0.0",
+  "description": "devrig.dev website",
+  "scripts": {
+    "build": "webpack --mode production",
+    "dev": "webpack --mode development --watch"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.10",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "ts-loader": "9.5.1",
+    "typescript": "5.7.3",
+    "webpack": "5.97.1",
+    "webpack-cli": "5.1.4"
+  }
+}

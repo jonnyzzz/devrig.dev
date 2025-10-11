@@ -1,0 +1,4 @@
+name = "devrig-minimal"
+license = "Apache-2.0"
+description = "Minimalistic theme for devrig website"
+min_version = "0.120.0"

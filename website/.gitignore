@@ -1,0 +1,6 @@
+node_modules/
+public/
+static/js/bundle.js
+static/js/bundle.js.map
+package-lock.json
+.hugo_build.lock
