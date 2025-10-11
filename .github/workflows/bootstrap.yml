@@ -1,0 +1,33 @@
+name: Bootstrap Tests
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "bootstrap/**"
+      - ".github/workflows/bootstrap.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "bootstrap/**"
+      - ".github/workflows/bootstrap.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Pull Docker images
+        run: |
+          docker pull ubuntu:18.04
+          docker pull mcr.microsoft.com/dotnet/sdk:8.0
+
+      - name: Run bootstrap tests
+        working-directory: bootstrap
+        run: go test -v
