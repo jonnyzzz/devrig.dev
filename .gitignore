@@ -3,3 +3,7 @@
 .ijwb
 bazel-*
 .DS_Store
+
+# Bootstrap test generated files
+bootstrap/test-config-*.yaml
+bootstrap/.devrig/

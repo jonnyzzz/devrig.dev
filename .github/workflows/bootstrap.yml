@@ -26,6 +26,7 @@ jobs:
       - name: Pull Docker images
         run: |
           docker pull ubuntu:18.04
+          docker pull ubuntu:22.04
           docker pull mcr.microsoft.com/dotnet/sdk:8.0
 
       - name: Run bootstrap tests
