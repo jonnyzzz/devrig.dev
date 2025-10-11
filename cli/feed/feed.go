@@ -58,5 +58,6 @@ func ResolveRemoteIdeByConfig(ideRequest config.IDEConfig) (feed_api.RemoteIDE, 
 		return result, nil
 	}
 
-	return nil, fmt.Errorf("IDE is not found in feed. NameV: %s", ideRequest.Name())
+	return nil, fmt.Errorf("IDE not found in feed - Name: %s, Version: %s, Build: %s",
+		ideRequest.Name(), ideRequest.Version(), ideRequest.Build())
 }

@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 )
@@ -27,7 +26,7 @@ func FindConfigFile(startDir string) (string, error) {
 			return "", fmt.Errorf("failed to resolve symlink in directory %s: %w", dir, err)
 		}
 
-		log.Printf("Searching for config file in directory: %s", absDir)
+		// Debug: searching for config file in directory: absDir
 
 		// Check for infinite loops due to symlinks
 		if visitedDirs[absDir] {
@@ -40,7 +39,6 @@ func FindConfigFile(startDir string) (string, error) {
 
 		// Check if the file exists
 		if _, err := os.Stat(configPath); err == nil {
-			log.Printf("Found configuration file at: %s", configPath)
 			return configPath, nil
 		}
 

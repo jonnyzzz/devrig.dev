@@ -2,10 +2,11 @@ package config
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"gopkg.in/yaml.v3"
 )
 
 // ideConfigImpl is the internal implementation of IDEConfig
@@ -44,8 +45,8 @@ func (c *configImpl) String() string {
 }
 
 var (
-	instance Config
-	once     sync.Once
+	instances = make(map[string]Config)
+	mutex     sync.RWMutex
 )
 
 func ResolveConfig() (Config, error) {
@@ -53,34 +54,59 @@ func ResolveConfig() (Config, error) {
 }
 
 func ResolveConfigFromDirectory(cwd string) (Config, error) {
-	var err error
-	once.Do(func() {
-		var configPath string
-		configPath, err = FindConfigFile(cwd)
-		if err != nil {
-			return
-		}
-
-		// Create cache directory next to config file
-		cacheDir := filepath.Join(filepath.Dir(configPath), ".idew", "cache")
-		_, err := os.Stat(cacheDir)
-
-		// Parse .ides.yaml file
-		ide, err := parseConfigFile(configPath)
-		if err != nil {
-			return
-		}
-
-		instance = &configImpl{
-			configPath: configPath,
-			cacheDir:   cacheDir,
-			ide:        ide,
-		}
-	})
-
+	// Convert to absolute path for consistent caching
+	absCwd, err := filepath.Abs(cwd)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve config: %w", err)
+		return nil, fmt.Errorf("failed to get absolute path: %w", err)
 	}
+
+	// Check if we already have an instance for this directory
+	mutex.RLock()
+	if instance, exists := instances[absCwd]; exists {
+		mutex.RUnlock()
+		return instance, nil
+	}
+	mutex.RUnlock()
+
+	// Create new instance
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Double-check after acquiring write lock
+	if instance, exists := instances[absCwd]; exists {
+		return instance, nil
+	}
+
+	var instance Config
+	var configErr error
+	var configPath string
+	configPath, configErr = FindConfigFile(cwd)
+	if configErr != nil {
+		return nil, fmt.Errorf("failed to resolve config: %w", configErr)
+	}
+
+	// Create cache directory next to config file
+	cacheDir := filepath.Join(filepath.Dir(configPath), ".idew", "cache")
+
+	// Ensure cache directory exists
+	if configErr = os.MkdirAll(cacheDir, 0755); configErr != nil {
+		return nil, fmt.Errorf("failed to create cache directory: %w", configErr)
+	}
+
+	// Parse config file
+	ide, configErr := parseConfigFile(configPath)
+	if configErr != nil {
+		return nil, fmt.Errorf("failed to parse config: %w", configErr)
+	}
+
+	instance = &configImpl{
+		configPath: configPath,
+		cacheDir:   cacheDir,
+		ide:        ide,
+	}
+
+	// Cache the instance
+	instances[absCwd] = instance
 
 	return instance, nil
 }
