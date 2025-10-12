@@ -13,14 +13,9 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "idew",
-	Short: fmt.Sprintf("IDE Wrapper v%s - Your development entry point", VersionAndBuild()),
-	Long: `IDE Wrapper is a command-line tool that helps download, install, manage, 
-and configure IDE and development environments for your project.
-
-Simply include the binary and a .idew.yaml config file in your repository,
-and contributors can quickly set up their development environment.`,
-	Run: runMainCommand,
+	Use:   "devrig",
+	Short: fmt.Sprintf("Devrig v%s - Your development entry point", VersionAndBuild()),
+	Run:   runMainCommand,
 }
 
 func init() {
@@ -34,6 +29,11 @@ func main() {
 }
 
 func runMainCommand(cmd *cobra.Command, args []string) {
+	//make it disabled
+	if cmd != nil {
+		return
+	}
+
 	localConfig, err := config.ResolveConfig()
 	if err != nil {
 		log.Fatalf("Failed to resolve configuration: %v\n", err)
