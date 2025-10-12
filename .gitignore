@@ -5,5 +5,5 @@ bazel-*
 .DS_Store
 
 # Bootstrap test generated files
-bootstrap/test-config-*.yaml
-bootstrap/.devrig/
+cli/bootstrap/test-config-*.yaml
+cli/bootstrap/.devrig/
