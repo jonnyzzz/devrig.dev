@@ -16,10 +16,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Read version and add build number
         id: version
         run: |
-          BASE_VERSION=$(cat VERSION | tr -d '\n')
+          BASE_VERSION=$(cat cli/VERSION | tr -d '\n')
           BUILD_NUMBER=${{ github.run_number }}
           VERSION="${BASE_VERSION}.${BUILD_NUMBER}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
@@ -52,163 +55,28 @@ jobs:
 
             See `checksums.txt` for SHA-512 hashes of all binaries.
 
-  build:
+  build-and-release:
     needs: prepare-release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          # Linux builds
-          - os: ubuntu-latest
-            goos: linux
-            goarch: amd64
-            output: devrig-linux-x86_64
-          - os: ubuntu-latest
-            goos: linux
-            goarch: arm64
-            output: devrig-linux-arm64
-
-          # macOS ARM64 (Apple Silicon only)
-          - os: macos-latest
-            goos: darwin
-            goarch: arm64
-            output: devrig-darwin-arm64
-
-          # Windows builds
-          - os: windows-latest
-            goos: windows
-            goarch: amd64
-            output: devrig-windows-x86_64.exe
-          - os: windows-latest
-            goos: windows
-            goarch: arm64
-            output: devrig-windows-arm64.exe
-
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-
-      - name: Build
+      - name: Build all platforms using build.sh in Docker
         working-directory: ./cli
         env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
-          CGO_ENABLED: 0
+          BUILD_NUMBER: ${{ github.run_number }}
         run: |
-          go build -v -ldflags="-X main.version=${{ needs.prepare-release.outputs.version }}" -o ../build/${{ matrix.output }} .
+          chmod +x build.sh build-in-docker-sandbox.sh
+          ./build.sh
 
-      - name: Calculate SHA-512
-        id: checksum
-        shell: bash
+      - name: Upload Release Assets
         run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            certutil -hashfile build/${{ matrix.output }} SHA512 | findstr /v "hash" | findstr /v "CertUtil" > build/${{ matrix.output }}.sha512
-          else
-            shasum -a 512 build/${{ matrix.output }} | awk '{print $1}' > build/${{ matrix.output }}.sha512
-          fi
-          CHECKSUM=$(cat build/${{ matrix.output }}.sha512)
-          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
-          echo "SHA-512: $CHECKSUM"
-
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.prepare-release.outputs.upload_url }}
-          asset_path: ./build/${{ matrix.output }}
-          asset_name: ${{ matrix.output }}
-          asset_content_type: application/octet-stream
-
-      - name: Upload artifact for checksums
-        uses: actions/upload-artifact@v4
-        with:
-          name: checksum-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: build/${{ matrix.output }}.sha512
-
-  generate-checksums:
-    needs: [prepare-release, build]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download all checksums
-        uses: actions/download-artifact@v4
-        with:
-          path: checksums
-
-      - name: Generate checksums.txt
-        run: |
-          echo "# devrig v${{ needs.prepare-release.outputs.version }} - SHA-512 Checksums" > checksums.txt
-          echo "" >> checksums.txt
-          for file in checksums/*/*.sha512; do
-            filename=$(basename "$file" .sha512)
-            checksum=$(cat "$file")
-            echo "$checksum  $filename" >> checksums.txt
+          # Upload binaries
+          for file in cli/build-in-docker/*; do
+            echo "Uploading $(basename "$file")..."
+            gh release upload "v${{ needs.prepare-release.outputs.version }}" "$file" --clobber
           done
-          cat checksums.txt
 
-      - name: Upload checksums.txt
-        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.prepare-release.outputs.upload_url }}
-          asset_path: ./checksums.txt
-          asset_name: checksums.txt
-          asset_content_type: text/plain
-
-      - name: Generate latest.json
-        run: |
-          cat > latest.json << 'EOF'
-          {
-            "version": "${{ needs.prepare-release.outputs.version }}",
-            "releaseDate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "releases": [
-              {
-                "os": "linux",
-                "arch": "x86_64",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ needs.prepare-release.outputs.version }}/devrig-linux-x86_64",
-                "sha512": "sha-512:$(cat checksums/checksum-linux-amd64/devrig-linux-x86_64.sha512)"
-              },
-              {
-                "os": "linux",
-                "arch": "arm64",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ needs.prepare-release.outputs.version }}/devrig-linux-arm64",
-                "sha512": "sha-512:$(cat checksums/checksum-linux-arm64/devrig-linux-arm64.sha512)"
-              },
-              {
-                "os": "darwin",
-                "arch": "arm64",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ needs.prepare-release.outputs.version }}/devrig-darwin-arm64",
-                "sha512": "sha-512:$(cat checksums/checksum-darwin-arm64/devrig-darwin-arm64.sha512)"
-              },
-              {
-                "os": "windows",
-                "arch": "x86_64",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ needs.prepare-release.outputs.version }}/devrig-windows-x86_64.exe",
-                "sha512": "sha-512:$(cat checksums/checksum-windows-amd64/devrig-windows-x86_64.exe.sha512)"
-              },
-              {
-                "os": "windows",
-                "arch": "arm64",
-                "url": "https://github.com/${{ github.repository }}/releases/download/v${{ needs.prepare-release.outputs.version }}/devrig-windows-arm64.exe",
-                "sha512": "sha-512:$(cat checksums/checksum-windows-arm64/devrig-windows-arm64.exe.sha512)"
-              }
-            ]
-          }
-          EOF
-          cat latest.json
-
-      - name: Upload latest.json
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.prepare-release.outputs.upload_url }}
-          asset_path: ./latest.json
-          asset_name: latest.json
-          asset_content_type: application/json
