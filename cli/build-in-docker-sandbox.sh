@@ -70,47 +70,41 @@ ls -lh "${OUTPUT_DIR}"
 
 DOWNLOAD_URL_BASE="https://github.com/jonnyzzz/devrig/releases/download/v${VERSION}"
 
-cd "${OUTPUT_DIR}"
-cat > "${OUTPUT_DIR}/latest.json" << EOF
-          {
-            "version": "${VERSION}",
-            "releaseDate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "releases": [
-              {
-                "os": "linux",
-                "arch": "x86_64",
-                "url": "${DOWNLOAD_URL_BASE}/devrig-linux-x86_64",
-                "sha512": "$(cat devrig-linux-x86_64.sha512)"
-              },
-              {
-                "os": "linux",
-                "arch": "arm64",
-                "url": "${DOWNLOAD_URL_BASE}/devrig-linux-arm64",
-                "sha512": "$(cat devrig-linux-arm64.sha512)"
-              },
-              {
-                "os": "darwin",
-                "arch": "arm64",
-                "url": "${DOWNLOAD_URL_BASE}/devrig-darwin-arm64",
-                "sha512": "$(cat devrig-darwin-arm64.sha512)"
-              },
-              {
-                "os": "windows",
-                "arch": "x86_64",
-                "url": "${DOWNLOAD_URL_BASE}/devrig-windows-x86_64.exe",
-                "sha512": "$(cat devrig-windows-x86_64.exe.sha512)"
-              },
-              {
-                "os": "windows",
-                "arch": "arm64",
-                "url": "${DOWNLOAD_URL_BASE}/devrig-windows-arm64.exe",
-                "sha512": "$(cat devrig-windows-arm64.exe.sha512)"
-              }
-            ]
-          }
-EOF
-cat "${OUTPUT_DIR}/latest.json"
+# Generate JSON array of releases
 
+for file in "${OUTPUT_DIR}"/devrig-*; do
+    [[ "$file" == *.sha512 ]] && continue
+    [[ ! -f "$file" ]] && continue
+
+    # Extract just the filename without directory path
+    name=$(basename "$file")
+    name="${name#devrig-}"      # Remove 'devrig-' prefix
+    name="${name%.exe}"             # Remove '.exe' suffix if present
+    os="${name%%-*}"                # Everything before first '-'
+    arch="${name#*-}"               # Everything after first '-'
+
+    sha512=$(cat "${file}.sha512" || exit 133)
+
+    jq -n \
+        --indent 2 \
+        --arg os "$os" \
+        --arg arch "$arch" \
+        --arg url "${DOWNLOAD_URL_BASE}/${file}" \
+        --arg sha512 "$sha512" \
+        '{os: $os, arch: $arch, url: $url, sha512: $sha512}' \
+        >> "${OUTPUT_DIR}/latest-tmp.json"
+done
+
+jq -n \
+    --indent 2 \
+    --arg version "${VERSION}" \
+    --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --argjson releases "$(jq -s '.' < "${OUTPUT_DIR}/latest-tmp.json")" \
+    '{version: $version, releaseDate: $date, releases: $releases}' \
+    > "${OUTPUT_DIR}/latest.json"
+
+rm "${OUTPUT_DIR}/latest-tmp.json"
+cat "${OUTPUT_DIR}/latest.json"
 
 cp -av "${OUTPUT_DIR}/." "/devrig-build/"
 ls -lah "/devrig-build"
