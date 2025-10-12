@@ -89,7 +89,7 @@ for file in "${OUTPUT_DIR}"/devrig-*; do
         --indent 2 \
         --arg os "$os" \
         --arg arch "$arch" \
-        --arg url "${DOWNLOAD_URL_BASE}/${file}" \
+        --arg url "${DOWNLOAD_URL_BASE}/$(basename "$file")" \
         --arg sha512 "$sha512" \
         '{os: $os, arch: $arch, url: $url, sha512: $sha512}' \
         >> "${OUTPUT_DIR}/latest-tmp.json"
