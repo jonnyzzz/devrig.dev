@@ -11,13 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
 
       - name: Read version and add build number
         id: version
@@ -29,32 +25,29 @@ jobs:
           echo "Version: $VERSION (Base: $BASE_VERSION, Build: $BUILD_NUMBER)"
 
       - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEVRIG_VERSION: ${{ steps.version.outputs.version }}
-        with:
-          tag_name: v${{ steps.version.outputs.version }}
-          release_name: devrig v${{ steps.version.outputs.version }}
-          draft: true
-          prerelease: true
-          body: |
-            # devrig v${{ steps.version.outputs.version }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" \
+            --title "devrig v${{ steps.version.outputs.version }}" \
+            --draft \
+            --prerelease \
+            --notes "
 
-            ## Installation
+          ## Installation
 
-            Download the appropriate binary for your platform and architecture.
+          Download the appropriate binary for your platform and architecture.
 
-            ## Supported Platforms
+          ## Supported Platforms
 
-            - Linux (x86_64, ARM64)
-            - macOS (ARM64)
-            - Windows (x86_64, ARM64)
+          - Linux (x86_64, ARM64)
+          - macOS (ARM64)
+          - Windows (x86_64, ARM64)
 
-            ## Checksums
+          ## Checksums
 
-            See `checksums.txt` for SHA-512 hashes of all binaries.
+          See \`checksums.txt\` for SHA-512 hashes of all binaries."
 
   build-and-release:
     needs: prepare-release
@@ -67,17 +60,17 @@ jobs:
         working-directory: ./cli
         env:
           BUILD_NUMBER: ${{ github.run_number }}
+          DEVRIG_VERSION: ${{ needs.prepare-release.outputs.version }}
         run: |
           chmod +x build.sh build-in-docker-sandbox.sh
           ./build.sh
 
       - name: Upload Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Upload binaries
           for file in cli/build-in-docker/*; do
             echo "Uploading $(basename "$file")..."
             gh release upload "v${{ needs.prepare-release.outputs.version }}" "$file" --clobber
           done
-
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
