@@ -13,7 +13,7 @@ docker build -t $BUILDER_IMAGE .
 rm -rf "$(pwd)/build-in-docker" || true
 mkdir -p "$(pwd)/build-in-docker" || true
 
-docker run -it --rm \
+docker run -i --rm \
        -v "$(pwd):/devrig-base-cli:ro" \
        -v "$(pwd)/build-in-docker:/devrig-build:rw" \
        -e BUILD_INSIDE_DOCKER=YES \
