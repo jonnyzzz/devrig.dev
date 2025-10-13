@@ -29,7 +29,7 @@ func downloadAndProcessFeed(ctx context.Context, url string) error {
 		logFeedItem(entry)
 	}
 
-	if len(entries) < 10 {
+	if len(entries) < 1 {
 		return errors.New("too few entries")
 	}
 
