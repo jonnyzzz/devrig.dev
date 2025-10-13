@@ -33,6 +33,7 @@ jobs:
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEVRIG_VERSION: ${{ steps.version.outputs.version }}
         with:
           tag_name: v${{ steps.version.outputs.version }}
           release_name: devrig v${{ steps.version.outputs.version }}
@@ -48,7 +49,7 @@ jobs:
             ## Supported Platforms
 
             - Linux (x86_64, ARM64)
-            - macOS (ARM64 - Apple Silicon)
+            - macOS (ARM64)
             - Windows (x86_64, ARM64)
 
             ## Checksums

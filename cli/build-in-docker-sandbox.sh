@@ -6,7 +6,18 @@ if [ "${BUILD_INSIDE_DOCKER:-not-set}" != "YES" ]; then
   exit 79
 fi
 
-VERSION="$(cat ./VERSION).${BUILD_NUMBER:-SNAPSHOT}"
+if [ "${DEVRIG_VERSION:-NONE}" = "NONE" ]; then
+  VERSION="$(cat ./VERSION).${BUILD_NUMBER:-SNAPSHOT}"
+else
+  FILE_VERSION="$(cat ./VERSION)"
+  if [[ "${DEVRIG_VERSION}" != "${FILE_VERSION}"* ]]; then
+    echo "ERROR: DEVRIG_VERSION '${DEVRIG_VERSION}' must start with VERSION file content '${FILE_VERSION}'"
+    exit 1
+  fi
+
+  VERSION="${DEVRIG_VERSION}"
+fi
+
 echo "Target build number is $VERSION"
 
 mkdir -p "/devrig-build-$VERSION"
