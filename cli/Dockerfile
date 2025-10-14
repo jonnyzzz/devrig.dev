@@ -4,3 +4,4 @@ FROM golang:1.25-alpine
 # Install build dependencies
 RUN apk add --no-cache git bash jq
 
+ENV BUILD_INSIDE_DOCKER=YES

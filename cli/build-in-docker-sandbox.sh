@@ -53,11 +53,10 @@ for platform in "${PLATFORMS[@]}"; do
   echo ""
   echo "Building ${OUTPUT}..."
 
-  GOOS="${GOOS}" GOARCH="${GOARCH}" CGO_ENABLED=0 \
-    go build -v \
-    -ldflags="-X main.version=${VERSION}" \
-    -o "${OUTPUT_DIR}/${OUTPUT}" \
-    .
+  GOOS="${GOOS}" GOARCH="${GOARCH}" \
+  OUTPUT="${OUTPUT_DIR}/${OUTPUT}" \
+  VERSION="${VERSION}"  \
+  ./build-in-docker-binary.sh
 
   # Calculate SHA-512 checksum
   if command -v sha512sum &> /dev/null; then
