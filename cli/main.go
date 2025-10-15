@@ -1,25 +1,32 @@
 package main
 
 import (
-	"cli/config"
-	"cli/feed"
-	"cli/unpack"
 	"context"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/spf13/cobra"
+	"jonnyzzz.com/devrig.dev/config"
+	"jonnyzzz.com/devrig.dev/feed"
+	initCmd "jonnyzzz.com/devrig.dev/init"
+	"jonnyzzz.com/devrig.dev/unpack"
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "devrig",
 	Short: fmt.Sprintf("Devrig v%s - Your development entry point", VersionAndBuild()),
-	Run:   runMainCommand,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Select subcommand to use devrig")
+		fmt.Println("")
+		cmd.HelpFunc()(cmd, args)
+		os.Exit(11)
+	},
 }
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(initCmd.Cmd)
 }
 
 func main() {
@@ -28,7 +35,8 @@ func main() {
 	}
 }
 
-func runMainCommand(cmd *cobra.Command, args []string) {
+//goland:noinspection GoUnusedFunction
+func someOldCode(cmd *cobra.Command) {
 	//make it disabled
 	if cmd != nil {
 		return

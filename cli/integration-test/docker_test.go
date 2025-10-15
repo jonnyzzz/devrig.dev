@@ -59,6 +59,10 @@ func TestDockerBinaryExecution(t *testing.T) {
 	t.Run("VersionInEmptyFolder", func(t *testing.T) {
 		testVersionInEmptyFolder(t, binaryPath)
 	})
+
+	t.Run("InitFromLocalBinary", func(t *testing.T) {
+		testInitFromLocalBinary(t, binaryPath)
+	})
 }
 
 // getDockerArchitecture detects the architecture of the Docker environment
@@ -166,5 +170,52 @@ func testVersionInEmptyFolder(t *testing.T, binaryPath string) {
 	} else if err != nil {
 		t.Logf("Binary output in empty folder: %s", strings.TrimSpace(output))
 		// This is acceptable - we're just testing it doesn't crash unexpectedly
+	}
+}
+
+// testInitFromLocalBinary tests the init --init-from-local command and verifies the devrig script can run without download
+func testInitFromLocalBinary(t *testing.T, binaryPath string) {
+	var stdout, stderr bytes.Buffer
+
+	script := `#!/bin/sh
+      mkdir -p /workspace/local-project
+      /devrig init --init-from-local /workspace/local-project
+      cd /workspace/local-project
+      ls -lah
+      ls -lah .devrig
+      ls -lah .devrig/*
+      cat devrig.yaml
+      # set -e -x -o && source ./devrig version
+      ./devrig version || echo "FAIL - version command failed"
+      echo "completed"
+    `
+
+	// Step 1: Run init --init-from-local to create the environment
+	t.Log("Step 1: Running init --init-from-local...")
+	cmd := exec.Command("docker", "run", "--rm",
+		"-v", fmt.Sprintf("%s:/devrig:ro", binaryPath),
+		"alpine:latest",
+		"sh", "-c", script,
+	)
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		t.Fatalf("Failed to run init --init-from-local in Docker: %v\nStdout: %s\nStderr: %s",
+			err, stdout.String(), stderr.String())
+	}
+
+	output := stdout.String() + "\n\nSTDERR:\n\n" + stderr.String()
+	t.Log(output)
+
+	if !strings.Contains(output, "Initializing from local binary") {
+		t.Errorf("Init output doesn't contain local binary message: %s", output)
+	}
+	if !strings.Contains(output, "Local initialization completed successfully!") {
+		t.Errorf("Init output doesn't contain success message: %s", output)
+	}
+	if strings.Contains(output, "FAIL -") {
+		t.Errorf("Output contains FAIL message: %s", output)
 	}
 }
