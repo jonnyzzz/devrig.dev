@@ -50,6 +50,16 @@ PLATFORMS=(
 for platform in "${PLATFORMS[@]}"; do
   IFS='/' read -r GOOS GOARCH OUTPUT <<< "${platform}"
 
+  if [ "${BUILD_CURRENT_ONLY}" = "YES" ]; then
+      if [ "${GOOS}" != "$(go env GOOS)" ]; then
+        continue
+      fi
+
+      if [ "${GOARCH}" != "$(go env GOARCH)" ]; then
+        continue
+      fi
+  fi
+
   echo ""
   echo "Building ${OUTPUT}..."
 

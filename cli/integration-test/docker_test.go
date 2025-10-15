@@ -19,9 +19,15 @@ func TestDockerBinaryExecution(t *testing.T) {
 
 	// Step 1: Build binaries using build.sh
 	t.Log("Building binaries using build.sh...")
-	buildScript := filepath.Join(os.Getenv("PWD"), "..", "build.sh")
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Failed to get working directory: %v", err)
+	}
+	buildScript := filepath.Join(wd, "..", "build.sh")
 
 	cmd := exec.Command("bash", buildScript)
+	cmd.Env = append([]string{}, os.Environ()...)
+	cmd.Env = append(cmd.Env, "BUILD_CURRENT_ONLY=YES")
 	cmd.Dir = filepath.Dir(buildScript)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -17,6 +17,7 @@ docker run -i --rm \
        -v "$(pwd):/devrig-base-cli:ro" \
        -v "$(pwd)/build-in-docker:/devrig-build:rw" \
        -e BUILD_INSIDE_DOCKER=YES \
+       -e "BUILD_CURRENT_ONLY=${BUILD_CURRENT_ONLY:-NONE}" \
        -e "DEVRIG_VERSION=${DEVRIG_VERSION:-NONE}" \
        --workdir "/devrig-base-cli" \
        $BUILDER_IMAGE \
