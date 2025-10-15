@@ -88,7 +88,7 @@ echo ""
 echo "Generated files:"
 ls -lh "${OUTPUT_DIR}"
 
-DOWNLOAD_URL_BASE="https://github.com/jonnyzzz/devrig/releases/download/v${VERSION}"
+DOWNLOAD_URL_BASE="https://github.com/jonnyzzz/devrig.dev/releases/download/v${VERSION}"
 
 # Generate JSON array of releases
 
