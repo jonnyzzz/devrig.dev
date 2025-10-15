@@ -1,8 +1,9 @@
 package unpack_api
 
 import (
-	"cli/feed_api"
 	"fmt"
+
+	"jonnyzzz.com/devrig.dev/feed_api"
 )
 
 type UnpackedDownloadedRemoteIde interface {

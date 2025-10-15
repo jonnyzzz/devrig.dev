@@ -1,14 +1,15 @@
 package unpack
 
 import (
-	"cli/config"
-	"cli/feed_api"
-	"cli/layout"
-	"cli/unpack_api"
 	"fmt"
 	"log"
 	"os"
 	"strings"
+
+	"jonnyzzz.com/devrig.dev/config"
+	"jonnyzzz.com/devrig.dev/feed_api"
+	"jonnyzzz.com/devrig.dev/layout"
+	"jonnyzzz.com/devrig.dev/unpack_api"
 )
 
 func UnpackIde(localConfig config.Config, request feed_api.DownloadedRemoteIde) (unpack_api.UnpackedDownloadedRemoteIde, error) {

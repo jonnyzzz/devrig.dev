@@ -1,14 +1,15 @@
 package unpack
 
 import (
-	"cli/config"
-	"cli/feed_api"
-	"cli/unpack_api"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+
+	"jonnyzzz.com/devrig.dev/config"
+	"jonnyzzz.com/devrig.dev/feed_api"
+	"jonnyzzz.com/devrig.dev/unpack_api"
 )
 
 type unpackedDownloadedRemoteIdeDmg struct {

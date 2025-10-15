@@ -1,11 +1,12 @@
 package layout
 
 import (
-	"cli/config"
-	"cli/feed_api"
 	"path"
 	"regexp"
 	"strings"
+
+	"jonnyzzz.com/devrig.dev/config"
+	"jonnyzzz.com/devrig.dev/feed_api"
 )
 
 // SanitizePath sanitizes a single path or filename component

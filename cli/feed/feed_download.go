@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ulikunitz/xz"
-	"go.mozilla.org/pkcs7"
 	"io"
 	"net/http"
+
+	"github.com/ulikunitz/xz"
+	"go.mozilla.org/pkcs7"
 )
 
 func downloadAndValidateFeedUrl(ctx context.Context, url string) ([]byte, error) {

@@ -1,10 +1,11 @@
 package feed
 
 import (
-	"cli/config"
-	"cli/feed_api"
 	"context"
 	"fmt"
+
+	"jonnyzzz.com/devrig.dev/config"
+	"jonnyzzz.com/devrig.dev/feed_api"
 )
 
 func (entry *feedEntry) Name() string {

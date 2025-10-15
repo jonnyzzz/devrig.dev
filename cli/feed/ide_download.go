@@ -1,9 +1,6 @@
 package feed
 
 import (
-	"cli/config"
-	"cli/feed_api"
-	"cli/layout"
 	"context"
 	"crypto/sha256"
 	"fmt"
@@ -12,6 +9,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"jonnyzzz.com/devrig.dev/config"
+	"jonnyzzz.com/devrig.dev/feed_api"
+	"jonnyzzz.com/devrig.dev/layout"
 )
 
 type downloadedRemoteIde struct {
