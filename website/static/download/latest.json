@@ -1,36 +1,39 @@
 {
-  "version": "0.0.1",
-  "releaseDate": "2025-01-01T00:00:00Z",
-  "releases": [
-    {
-      "os": "linux",
-      "arch": "x86_64",
-      "url": "https://devrig.dev/download/devrig-linux-x86_64",
-      "sha512": "sha-512:placeholder-hash-linux-x86_64"
-    },
-    {
-      "os": "linux",
-      "arch": "arm64",
-      "url": "https://devrig.dev/download/devrig-linux-arm64",
-      "sha512": "sha-512:placeholder-hash-linux-arm64"
-    },
+  "binaries": [
     {
       "os": "darwin",
       "arch": "arm64",
-      "url": "https://devrig.dev/download/devrig-darwin-arm64",
-      "sha512": "sha-512:placeholder-hash-darwin-arm64"
+      "url": "https://github.com/jonnyzzz/devrig.dev/releases/download/v0.79.4/devrig-darwin-arm64",
+      "sha512": "90856e12e088b2053aa82a786b6e686baa57bd52d454424057ae059de72bb6278554e28d6c622cf5b2494ca8d9e6fdf7ab4c0561045737d462a32de9e065b21b",
+      "filename": "devrig-darwin-arm64"
     },
     {
-      "os": "windows",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/jonnyzzz/devrig.dev/releases/download/v0.79.4/devrig-linux-arm64",
+      "sha512": "575c410002c28be78515857b5d181306159cd576610b252dea8c613b1dfb24293daffb698a036dd4cfc07407bbea977fa3246d06ae7a2ef4202b233163e20a1e",
+      "filename": "devrig-linux-arm64"
+    },
+    {
+      "os": "linux",
       "arch": "x86_64",
-      "url": "https://devrig.dev/download/devrig-windows-x86_64.exe",
-      "sha512": "sha-512:placeholder-hash-windows-x86_64"
+      "url": "https://github.com/jonnyzzz/devrig.dev/releases/download/v0.79.4/devrig-linux-x86_64",
+      "sha512": "0a018f4b1d4bbb7bded91cef6abda6ec9d93b3d033c8c4067fe2d305d6aaac8f67b3b482178bb71232778b18fb1cf16074bf8c304fee603eff9f9552d8b958a0",
+      "filename": "devrig-linux-x86_64"
     },
     {
       "os": "windows",
       "arch": "arm64",
-      "url": "https://devrig.dev/download/devrig-windows-arm64.exe",
-      "sha512": "sha-512:placeholder-hash-windows-arm64"
+      "url": "https://github.com/jonnyzzz/devrig.dev/releases/download/v0.79.4/devrig-windows-arm64.exe",
+      "sha512": "a555539624900f2efaf8e22ecbfdc637fb41b290b7445635a128f223a31dca893e1c938cad0bb8397354e69980f75c35f0a1922b4d1dd68e7c876a2dd74eb223",
+      "filename": "devrig-windows-arm64.exe"
+    },
+    {
+      "os": "windows",
+      "arch": "x86_64",
+      "url": "https://github.com/jonnyzzz/devrig.dev/releases/download/v0.79.4/devrig-windows-x86_64.exe",
+      "sha512": "874342d3840997b3d02cc94975e92973f691408170d0528115cb0094d03857085d5e77b8d06bde9104c418d356b86f9a09c40731a288f279978cafb8d6b6e0b3",
+      "filename": "devrig-windows-x86_64.exe"
     }
   ]
 }
