@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e -x
+set -e
 set -o pipefail
 
 # Script to sync GitHub release to website
@@ -32,7 +32,7 @@ EOF
 
 # Parse arguments
 TAG=""
-SSH_KEY_ID=""
+SSH_KEY_ID="devrig key 1"
 WORK_DIR="${SCRIPT_DIR}/downloads"
 
 rm -rf "${WORK_DIR}" || true
@@ -140,8 +140,6 @@ if [ ! -f "latest.json" ]; then
     exit 1
 fi
 
-NEW_BASE_URL="https://devrig.dev/download"
-
 # Process latest.json: for each binary, add the url field
 jq -c '(.binaries // .releases)[]' latest.json | while IFS= read -r binary_json; do
     FILENAME=$(echo "$binary_json" | jq -r '(.filename // .url) | split("/") | last')
@@ -160,7 +158,10 @@ jq -c '(.binaries // .releases)[]' latest.json | while IFS= read -r binary_json;
     fi
 
     # Add URL to the binary entry
-    echo "$binary_json" | jq --arg url "$(cat "${FILENAME}.url")" '. + {url: $url}' >> binaries.jsonl
+    echo "$binary_json" | jq \
+       --arg url "$(cat "${FILENAME}.url")" \
+       --arg filename "${FILENAME}" \
+       '. + {url: $url, filename: $filename}' >> binaries.jsonl
 done
 
 # Build final JSON
@@ -192,3 +193,7 @@ echo "✓ Release sync completed successfully!"
 echo "Release tag: $TAG"
 echo "Work directory: $WORK_DIR"
 echo "Output files: latest.final.json, latest.final.json.sig"
+
+
+cp -vf latest.final.json     "${SCRIPT_DIR}/../website/static/download/latest.json"
+cp -vf latest.final.json.sig "${SCRIPT_DIR}/../website/static/download/latest.json.sig"
