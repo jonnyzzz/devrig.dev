@@ -88,8 +88,6 @@ echo ""
 echo "Generated files:"
 ls -lh "${OUTPUT_DIR}"
 
-DOWNLOAD_URL_BASE="https://github.com/jonnyzzz/devrig.dev/releases/download/v${VERSION}"
-
 # Generate JSON array of releases
 
 for file in "${OUTPUT_DIR}"/devrig-*; do
@@ -109,7 +107,6 @@ for file in "${OUTPUT_DIR}"/devrig-*; do
         --indent 2 \
         --arg os "$os" \
         --arg arch "$arch" \
-        --arg url "${DOWNLOAD_URL_BASE}/$(basename "$file")" \
         --arg sha512 "$sha512" \
         '{os: $os, arch: $arch, url: $url, sha512: $sha512}' \
         >> "${OUTPUT_DIR}/latest-tmp.json"
