@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 interface Release {
   os: string;
   arch: string;
+  filename: string;
   url: string;
   sha512: string;
 }
@@ -10,7 +11,7 @@ interface Release {
 interface LatestRelease {
   version: string;
   releaseDate: string;
-  releases: Release[];
+  binaries: Release[];
 }
 
 export const DownloadButtons: React.FC = () => {
@@ -53,15 +54,15 @@ export const DownloadButtons: React.FC = () => {
     <div className="download-buttons">
       <h3>Quick Downloads</h3>
       <div className="button-grid">
-        {releases.releases.map((release, idx) => {
+        {releases.binaries.map((release, idx) => {
           const osName = osNames[release.os] || release.os;
           const archName = archNames[release.arch] || release.arch;
-          const fileName = release.url.split('/').pop();
+          const fileName = release.filename;
 
           return (
             <a
               key={idx}
-              href={release.url.replace('https://devrig.dev', '')}
+              href={release.url}
               className="download-button"
               download={fileName}
             >
