@@ -107,8 +107,9 @@ for file in "${OUTPUT_DIR}"/devrig-*; do
         --indent 2 \
         --arg os "$os" \
         --arg arch "$arch" \
+        --arg file "$name" \
         --arg sha512 "$sha512" \
-        '{os: $os, arch: $arch, url: $url, sha512: $sha512}' \
+        '{os: $os, arch: $arch, filename: $file, sha512: $sha512}' \
         >> "${OUTPUT_DIR}/latest-tmp.json"
 done
 
