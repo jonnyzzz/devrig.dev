@@ -100,6 +100,9 @@ func initializeFromLocalBinary(targetDir string) error {
 	// Determine OS and architecture
 	osName := runtime.GOOS
 	archName := runtime.GOARCH
+	if archName == "amd64" {
+		archName = "x86_64"
+	}
 	platform := fmt.Sprintf("%s-%s", osName, archName)
 
 	// Generate devrig.yaml content
