@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
 )
 
 // ideConfigImpl is the internal implementation of IDEConfig

@@ -13,8 +13,8 @@ import (
 
 	"jonnyzzz.com/devrig.dev/bootstrap"
 
+	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 )
 
 var scriptsOnly bool
