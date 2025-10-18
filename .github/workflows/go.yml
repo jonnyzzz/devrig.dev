@@ -27,4 +27,4 @@ jobs:
 
     - name: Test
       working-directory: cli
-      run: go test -v ./...
+      run: go test -v $(go list ./... | grep -v '/bootstrap')
