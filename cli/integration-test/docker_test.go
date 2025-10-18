@@ -6,102 +6,73 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
+	"sync"
 	"testing"
 )
 
-// TestDockerBinaryExecution builds binaries and tests them in Docker
-func TestDockerBinaryExecution(t *testing.T) {
+var (
+	cachedBinaryPath string
+	binarySetupOnce  sync.Once
+	binarySetupError error
+)
+
+// setupDockerBinary builds the binary and returns its path (cached)
+func setupDockerBinary(t *testing.T) string {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
 
-	// Step 1: Build binaries using build.sh
-	t.Log("Building binaries using build.sh...")
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
-	buildScript := filepath.Join(wd, "..", "build.sh")
+	binarySetupOnce.Do(func() {
+		// Step 1: Build binaries using build.sh
+		t.Log("Building binaries using build.sh...")
+		wd, err := os.Getwd()
+		if err != nil {
+			binarySetupError = fmt.Errorf("failed to get working directory: %v", err)
+			return
+		}
+		buildScript := filepath.Join(wd, "..", "build.sh")
 
-	cmd := exec.Command("bash", buildScript)
-	cmd.Env = append([]string{}, os.Environ()...)
-	cmd.Env = append(cmd.Env, "BUILD_CURRENT_ONLY=YES")
-	cmd.Dir = filepath.Dir(buildScript)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+		cmd := exec.Command("bash", buildScript)
+		cmd.Env = append([]string{}, os.Environ()...)
+		cmd.Env = append(cmd.Env, "BUILD_CURRENT_ONLY=YES")
+		cmd.Dir = filepath.Dir(buildScript)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
-	if err := cmd.Run(); err != nil {
-		t.Fatalf("Failed to run build.sh: %v", err)
-	}
+		if err := cmd.Run(); err != nil {
+			binarySetupError = fmt.Errorf("failed to run build.sh: %v", err)
+			return
+		}
 
-	// Step 2: Determine the binary for Linux (Docker environment)
-	// Detect Docker host architecture
-	dockerArch := getDockerArchitecture(t)
-	binaryName := fmt.Sprintf("devrig-linux-%s", dockerArch)
+		// Step 2: Determine the binary for Linux (Docker environment)
+		// Detect Docker host architecture
+		dockerArch := getDockerArchitecture(t)
+		binaryName := fmt.Sprintf("devrig-linux-%s", dockerArch)
 
-	buildInDockerDir := filepath.Join("..", "build-in-docker")
-	binaryPath := filepath.Join(buildInDockerDir, binaryName)
+		buildInDockerDir := filepath.Join("..", "build-in-docker")
+		binaryPath := filepath.Join(buildInDockerDir, binaryName)
 
-	// Verify binary exists
-	if _, err := os.Stat(binaryPath); err != nil {
-		t.Fatalf("Binary %s not found in %s: %v", binaryName, buildInDockerDir, err)
-	}
+		// Verify binary exists
+		if _, err := os.Stat(binaryPath); err != nil {
+			binarySetupError = fmt.Errorf("binary %s not found in %s: %v", binaryName, buildInDockerDir, err)
+			return
+		}
 
-	t.Logf("Using binary: %s", binaryName)
-
-	// Step 3: Run binary in Docker container
-	t.Run("VersionInDocker", func(t *testing.T) {
-		testVersionInDocker(t, binaryPath)
+		t.Logf("Using binary: %s", binaryName)
+		cachedBinaryPath = binaryPath
 	})
 
-	t.Run("VersionInEmptyFolder", func(t *testing.T) {
-		testVersionInEmptyFolder(t, binaryPath)
-	})
-
-	t.Run("InitFromLocalBinary", func(t *testing.T) {
-		testInitFromLocalBinary(t, binaryPath)
-	})
-}
-
-// getDockerArchitecture detects the architecture of the Docker environment
-func getDockerArchitecture(t *testing.T) string {
-	// Try to detect from Docker
-	cmd := exec.Command("docker", "run", "--rm", "alpine", "uname", "-m")
-	output, err := cmd.Output()
-	if err != nil {
-		t.Logf("Failed to detect Docker architecture, using host: %v", err)
-		// Fall back to host architecture
-		return mapGoArchToLinux(runtime.GOARCH)
+	if binarySetupError != nil {
+		t.Fatalf("Binary setup failed: %v", binarySetupError)
 	}
 
-	arch := strings.TrimSpace(string(output))
-	switch arch {
-	case "x86_64", "amd64":
-		return "x86_64"
-	case "aarch64", "arm64":
-		return "arm64"
-	default:
-		t.Fatalf("Unsupported Docker architecture: %s", arch)
-		return ""
-	}
+	return cachedBinaryPath
 }
 
-// mapGoArchToLinux maps Go's GOARCH to Linux architecture naming
-func mapGoArchToLinux(goarch string) string {
-	switch goarch {
-	case "amd64":
-		return "x86_64"
-	case "arm64":
-		return "arm64"
-	default:
-		return goarch
-	}
-}
-
-// testVersionInDocker tests running version command in a basic Docker container
-func testVersionInDocker(t *testing.T, binaryPath string) {
+// TestVersionInDocker tests running version command in a basic Docker container
+func TestVersionInDocker(t *testing.T) {
+	binaryPath := setupDockerBinary(t)
 	absPath, err := filepath.Abs(binaryPath)
 	if err != nil {
 		t.Fatalf("Failed to get absolute path: %v", err)
@@ -132,8 +103,9 @@ func testVersionInDocker(t *testing.T, binaryPath string) {
 	t.Logf("Version output: %s", strings.TrimSpace(output))
 }
 
-// testVersionInEmptyFolder tests running version command in an empty random folder to trigger errors
-func testVersionInEmptyFolder(t *testing.T, binaryPath string) {
+// TestVersionInEmptyFolder tests running version command in an empty random folder
+func TestVersionInEmptyFolder(t *testing.T) {
+	binaryPath := setupDockerBinary(t)
 	absPath, err := filepath.Abs(binaryPath)
 	if err != nil {
 		t.Fatalf("Failed to get absolute path: %v", err)
@@ -173,8 +145,9 @@ func testVersionInEmptyFolder(t *testing.T, binaryPath string) {
 	}
 }
 
-// testInitFromLocalBinary tests the init --init-from-local command and verifies the devrig script can run without download
-func testInitFromLocalBinary(t *testing.T, binaryPath string) {
+// TestInitFromLocalBinary tests the init --init-from-local command
+func TestInitFromLocalBinary(t *testing.T) {
+	binaryPath := setupDockerBinary(t)
 	var stdout, stderr bytes.Buffer
 
 	script := `#!/bin/sh
@@ -217,5 +190,26 @@ func testInitFromLocalBinary(t *testing.T, binaryPath string) {
 	}
 	if strings.Contains(output, "FAIL -") {
 		t.Errorf("Output contains FAIL message: %s", output)
+	}
+}
+
+// getDockerArchitecture detects the architecture of the Docker environment
+func getDockerArchitecture(t *testing.T) string {
+	// Try to detect from Docker
+	cmd := exec.Command("docker", "run", "--rm", "alpine", "uname", "-m")
+	output, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("Failed to detect Docker architecture, using host: %v", err)
+	}
+
+	arch := strings.TrimSpace(string(output))
+	switch arch {
+	case "x86_64", "amd64":
+		return "x86_64"
+	case "aarch64", "arm64":
+		return "arm64"
+	default:
+		t.Fatalf("Unsupported Docker architecture: %s", arch)
+		return ""
 	}
 }
