@@ -51,7 +51,9 @@ func VerifySignature(data []byte, signatureData []byte) error {
 			(keyType == "ssh-rsa" && (sigFormat == "rsa-sha2-256" || sigFormat == "rsa-sha2-512"))
 
 		if !isCompatible {
-			lastErr = fmt.Errorf("key %d type mismatch: pubKey=%s, sig=%s", i, keyType, sigFormat)
+			if lastErr == nil {
+				lastErr = fmt.Errorf("key %d type mismatch: pubKey=%s, sig=%s", i, keyType, sigFormat)
+			}
 			continue
 		}
 
