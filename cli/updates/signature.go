@@ -2,8 +2,8 @@ package updates
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"crypto/sha512"
+	_ "embed"
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
@@ -13,10 +13,17 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-// TrustedPublicKeys contains the hardcoded trusted SSH public keys for signature verification
+//go:embed key1.txt
+var key1Content string
+
+//go:embed key2.txt
+var key2Content string
+
+// TrustedPublicKeys contains the trusted SSH public keys for signature verification
+// Keys are loaded from embedded resources
 var TrustedPublicKeys = []string{
-	"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDIPpXgnYpUQnJaaGkVfqLtoZVGjsmnphxI9EZB/P0Fq devrig key 1",
-	"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDPFE5IPqPHxFimyrw+Xr6xK8clkhWMtEP61yM0fMuP/24PpE0hd8zTSdgZ1K1UrdnyFaZZqmm0/zxW0Yrj39m69YoxD1GzC5gcF43nmlCaLpcqXU130oTsYzdmvrMGZiZhazLP30mTSjFg8EC9gz5ZJA10xR7p4Bp4syLdRp6bYq3r4b70bHDoTRgxwgsbJZLYJI6/9wkYcSkUpuQmRM7tknwXwFbC5uFoIyaG8chjlJm76HcidSoAOYhpUgE6yC3S1N0DTdi/Rv/5fgr4IQJfFglp8zRyTuKKh5LFjlpsGvt1jnlM7FwQS8VcEJEvkk8nJDSi0J0AB9NB6EiZBvlfIaoRFJbgvhgzookHfxxLd36LOO0Ck+ExfkptW5JUQmS0UiW9PpZrIZG8d4KEZgC86k0OUcnXDP5gTvqC+kwUFnNJjrv/67OVXb1dzXtCLX8BXjn+CXRzWo0d9t+1YJOp3BGlnJfuIwF+UK8V98Hm3mUFW2C0ky6kfEZoCnEd67BI2yasiEpg1/CWv2oPxEflQWQhAhm0NNKKUJGt/oXP1Z54NMHYiM66jcY/6EmaMJ5OZrhxgXtlip2GC+17riD5CPaKaMlDdT41I8OR9lZoiEfjnliiXNoGdao+avzZvZGOSINzMLWtr3VeaX3JooQ6ZRyYlARkzooxdoynJXsvkQ== devrig key 2",
+	strings.TrimSpace(key1Content),
+	strings.TrimSpace(key2Content),
 }
 
 // VerifySignature verifies the SSH signature of the data using trusted public keys
@@ -36,8 +43,15 @@ func VerifySignature(data []byte, signatureData []byte) error {
 			continue
 		}
 
-		// Check if key type matches signature type
-		if pubKey.Type() != sig.signature.Format {
+		// Check if key type is compatible with signature type
+		// For RSA keys, the signature format can be ssh-rsa, rsa-sha2-256, or rsa-sha2-512
+		keyType := pubKey.Type()
+		sigFormat := sig.signature.Format
+		isCompatible := keyType == sigFormat ||
+			(keyType == "ssh-rsa" && (sigFormat == "rsa-sha2-256" || sigFormat == "rsa-sha2-512"))
+
+		if !isCompatible {
+			lastErr = fmt.Errorf("key %d type mismatch: pubKey=%s, sig=%s", i, keyType, sigFormat)
 			continue
 		}
 
@@ -182,18 +196,15 @@ func readString(r io.Reader) ([]byte, error) {
 
 // verifySSHSignature verifies an SSH signature against data
 func verifySSHSignature(pubKey ssh.PublicKey, data []byte, sig *sshSignature) error {
+	// Only sha512 is allowed
+	if strings.ToLower(sig.hashAlgorithm) != "sha512" {
+		return fmt.Errorf("unsupported hash algorithm: %s (only sha512 is allowed)", sig.hashAlgorithm)
+	}
+
 	// Compute the hash of the data
 	var hash []byte
-	switch strings.ToLower(sig.hashAlgorithm) {
-	case "sha256":
-		h := sha256.Sum256(data)
-		hash = h[:]
-	case "sha512":
-		h := sha512.Sum512(data)
-		hash = h[:]
-	default:
-		return fmt.Errorf("unsupported hash algorithm: %s", sig.hashAlgorithm)
-	}
+	h := sha512.Sum512(data)
+	hash = h[:]
 
 	// Build the signed message (SSH signature format)
 	var buf bytes.Buffer
