@@ -1,5 +1,6 @@
 # devrig.dev
 [![Apache 2.0 License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![Go](https://github.com/jonnyzzz/devrig/actions/workflows/go.yml/badge.svg)](https://github.com/jonnyzzz/devrig/actions/workflows/go.yml)
 
 The command to start the AI-empowered development environment of your project.
 With all possible IDEs, extensions, and configurations.
