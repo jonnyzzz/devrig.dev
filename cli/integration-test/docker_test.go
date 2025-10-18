@@ -50,12 +50,18 @@ func setupDockerBinary(t *testing.T) string {
 		dockerArch := getDockerArchitecture(t)
 		binaryName := fmt.Sprintf("devrig-linux-%s", dockerArch)
 
-		buildInDockerDir := filepath.Join("..", "build-in-docker")
+		buildInDockerDir := filepath.Join(wd, "..", "build-in-docker")
 		binaryPath := filepath.Join(buildInDockerDir, binaryName)
 
 		// Verify binary exists
 		if _, err := os.Stat(binaryPath); err != nil {
 			binarySetupError = fmt.Errorf("binary %s not found in %s: %v", binaryName, buildInDockerDir, err)
+			return
+		}
+
+		binaryName, err = filepath.Abs(binaryPath)
+		if err != nil {
+			binarySetupError = fmt.Errorf("Failed to get absolute path: %v", err)
 			return
 		}
 
@@ -73,23 +79,18 @@ func setupDockerBinary(t *testing.T) string {
 // TestVersionInDocker tests running version command in a basic Docker container
 func TestVersionInDocker(t *testing.T) {
 	binaryPath := setupDockerBinary(t)
-	absPath, err := filepath.Abs(binaryPath)
-	if err != nil {
-		t.Fatalf("Failed to get absolute path: %v", err)
-	}
-
 	var stdout, stderr bytes.Buffer
 
 	// Run the binary in Alpine Linux container
 	cmd := exec.Command("docker", "run", "--rm",
-		"-v", fmt.Sprintf("%s:/devrig:ro", absPath),
+		"-v", fmt.Sprintf("%s:/devrig:ro", binaryPath),
 		"alpine:latest",
 		"/devrig", "version",
 	)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		t.Fatalf("Failed to run version in Docker: %v\nStdout: %s\nStderr: %s",
 			err, stdout.String(), stderr.String())
@@ -106,10 +107,6 @@ func TestVersionInDocker(t *testing.T) {
 // TestVersionInEmptyFolder tests running version command in an empty random folder
 func TestVersionInEmptyFolder(t *testing.T) {
 	binaryPath := setupDockerBinary(t)
-	absPath, err := filepath.Abs(binaryPath)
-	if err != nil {
-		t.Fatalf("Failed to get absolute path: %v", err)
-	}
 
 	// Generate a random folder name
 	randomFolder := fmt.Sprintf("/tmp/devrig-test-%d", os.Getpid())
@@ -118,7 +115,7 @@ func TestVersionInEmptyFolder(t *testing.T) {
 
 	// Run the binary in Alpine Linux container with an empty random folder as working directory
 	cmd := exec.Command("docker", "run", "--rm",
-		"-v", fmt.Sprintf("%s:/devrig:ro", absPath),
+		"-v", fmt.Sprintf("%s:/devrig:ro", binaryPath),
 		"-w", randomFolder,
 		"alpine:latest",
 		"sh", "-c", fmt.Sprintf("mkdir -p %s && cd %s && /devrig version", randomFolder, randomFolder),
@@ -126,7 +123,7 @@ func TestVersionInEmptyFolder(t *testing.T) {
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		// It's okay if this fails - we're testing error handling
 		t.Logf("Command exited with error (expected): %v", err)
