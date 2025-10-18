@@ -1,0 +1,76 @@
+Got it!
+This website uses cookies to ensure you get the best experience on our website
+
+About
+Blog
+Projects
+Talks
+Tags
+Eugene Petrenko
+@jonnyzzz personal page and blog
+About me
+Hello, I’m Eugene Petrenko, or Evgeny Petrenko, or Евгений Петренко. Find more at my LinkedIn Profile.
+
+About
+Eugene drives in the IT and Software fields for more than 24 years.
+
+Eugene at the Stanford Graduate School of Business
+Senior Engineering Leader @ JetBrains since 2004 | Product and Technology Strategy, Developer Tools | IntelliJ Platform, Kotlin, Enterprise B2B.
+
+After 20 years at JetBrains, I’ve learned that the best developer tools emerge when we combine deep technical expertise with genuine empathy for developers’ daily challenges. This balance has guided my journey from ReSharper development to leading IDE Services today.
+
+Starting as a developer on ReSharper, TeamCity, Toolbox App, and Upsource, I’ve been fortunate to work on projects that shape how millions of developers write code. My path evolved through Git Hosting (part of JetBrains Space) and Shared Indexes to leading more impactful initiatives in IDE Services, where we’re pushing the boundaries of what developer tools can do at the company or enterprise scale.
+
+My passion lies at the intersection of developer productivity and team empowerment. Whether it’s optimizing IDE performance, streamlining team workflows, deploying AI tools, or mentoring the next generation of engineers, I’m driven by making developers’ lives better. The Toolbox App started as my hackathon and 20% project (those long evenings coding in Qt C++) and became something that now powers our enterprise IDE management - proof that great things happen when technical curiosity meets persistent experimentation.
+
+In my work, I successfully blend technical solutions, customer insights, and business needs to deliver viable products. With 42+ conference talks under my belt (mostly about Kotlin and developer productivity), I’ve learned that sharing knowledge is as important as creating it. Now I’m using these skills while talking with our customers or internal teams.
+
+Core expertise: Platform Architecture | Technical Strategy | Team Building | IntelliJ Platform | Kotlin (using it since before 1.0!) | Large-Scale Systems | DevEx Innovation | B2B and Enterprise.
+
+Nowadays, I’m focused on scaling developer productivity solutions for enterprise teams while maintaining a technical involvement that keeps me grounded. Feel free to reach out if you want to discuss IntelliJ, Kotlin, developer tools, B2B products, or how to make your next conference proposal stand out!
+
+Find more at my LinkedIn Profile
+
+Certificate, Diplomas and Courses
+Education
+2001 - 2006 Saint Petersburg State University, the Faculty of Mathematics and Mechanics
+2006 - 2009 Candidate of Sciences (similar to a Ph.D.) in computer science (subject code 05.13.11 VAK) from Saint Petersburg State University, the Faculty of Mathematics and Mechanics
+2024 Stanford Graduate School of Business. Influence and Negotiation Strategies Program on-site, statement
+2025 Stanford Graduate School of Business. Executive Program in Strategy and Organization on-site, statement
+Stanford Graduate School of Business
+Stanford Graduate School of Business
+Influence and Negotiation Strategies Program on-site ✅ statement
+Executive Program in Strategy and Organization on-site ✅ statement
+Stanford
+Technology Entrepreneurship ✅ statement
+Coursera
+Leading People and Teams Specialization by University of Michigan ✅ verified
+(5 courses)
+Managing Talent by University of Michigan ✅ verified
+Inspiring and Motivating Individuals by University of Michigan ✅ verified
+Leading Teams by University of Michigan ✅ verified
+Influencing People by University of Michigan ✅ verified
+Leading People and Teams Capstone by University of Michigan ✅ verified
+Machine Learning ✅
+An Introduction to Marketing ✅ statement
+Technology Commercialization, Part 1 ✅ statement
+Process Mining: Data science in Action ✅ statement
+edX
+Introduction to Banking & Financial Markets - I ✅ verified
+Equity Stock Markets: Concepts, Instruments, Risks and Derivatives ✅
+Other
+German Language B2 from Goethe Institute, Munich, Germany. ✅ certificate
+Media Training ✅ certificate
+Oracle Certified Professional
+
+Find more at my LinkedIn Profile
+
+More Info
+My kids’ names: Alexej, Alexander, and Alisa.
+
+Saint Petersburg, Russia is the city I grew up. I studied at Saint Petersburg State University, at the Faculty of Mathematics and Mechanics. I got Candidate of Sciences or Ph.D in computer science in 2009. I moved to Munich, Germany in 2011. I’m often visiting IT conferences around the world.
+
+Eugene Petrenko bio photo
+© 2005—2025 Eugene Petrenko.
+Unless otherwise noted, the content on the website is licensed under a CC BY-NC-SA 4.0 license.
+Powered by Jekyll using the So Simple Theme.
