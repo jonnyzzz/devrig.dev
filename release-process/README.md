@@ -2,6 +2,12 @@
 
 Scripts for managing devrig releases.
 
+## ssh-sign.sh
+
+See [README-SSH-SIGN.md](./README-SSH-SIGN.md) for complete documentation on signing files and verifying signatures using SSH keys.
+
+---
+
 ## sync-release.sh
 
 Syncs a GitHub release to the website by downloading, validating, signing, and uploading artifacts.
