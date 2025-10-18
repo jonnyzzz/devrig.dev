@@ -95,7 +95,8 @@ for file in "${OUTPUT_DIR}"/devrig-*; do
     [[ ! -f "$file" ]] && continue
 
     # Extract just the filename without directory path
-    name=$(basename "$file")
+    filename=$(basename "$file")
+    name="$filename"
     name="${name#devrig-}"      # Remove 'devrig-' prefix
     name="${name%.exe}"             # Remove '.exe' suffix if present
     os="${name%%-*}"                # Everything before first '-'
@@ -107,7 +108,7 @@ for file in "${OUTPUT_DIR}"/devrig-*; do
         --indent 2 \
         --arg os "$os" \
         --arg arch "$arch" \
-        --arg file "$name" \
+        --arg file "$filename" \
         --arg sha512 "$sha512" \
         '{os: $os, arch: $arch, filename: $file, sha512: $sha512}' \
         >> "${OUTPUT_DIR}/latest-tmp.json"
