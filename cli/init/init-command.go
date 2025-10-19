@@ -1,19 +1,15 @@
 package init
 
 import (
-	"crypto/sha512"
-	"encoding/hex"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 
 	"jonnyzzz.com/devrig.dev/bootstrap"
+	"jonnyzzz.com/devrig.dev/updates"
 
-	"github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 )
 
@@ -51,16 +47,12 @@ func doTheCommand(cmd *cobra.Command, args []string) error {
 	if err := os.MkdirAll(absPath, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
-	log.Printf("Created directory: %s\n", absPath)
-
 	cmd.Printf("Initializing devrig.dev environment in: %s\n", absPath)
 
 	// Copy bootstrap scripts
 	if err := bootstrap.CopyBootstrapScripts(absPath); err != nil {
 		return fmt.Errorf("failed to copy bootstrap scripts: %w", err)
 	}
-	log.Println("Bootstrap scripts created successfully!")
-
 	cmd.Println("Bootstrap scripts created successfully!")
 
 	if scriptsOnly {
@@ -73,11 +65,38 @@ func doTheCommand(cmd *cobra.Command, args []string) error {
 		if err := initializeFromLocalBinary(absPath); err != nil {
 			return fmt.Errorf("failed to initialize from local binary: %w", err)
 		}
-		log.Println("Local initialization completed successfully!")
+		cmd.Println("Local initialization completed successfully!")
 		return nil
 	}
 
-	return nil
+	return initializeFromUpdates(cmd, targetDir)
+}
+
+func initializeFromUpdates(cmd *cobra.Command, targetDir string) error {
+	client := updates.NewClient()
+	updateInfo, err := client.FetchLatestUpdateInfo()
+	if err != nil {
+		cmd.PrintErr("Failed to fetch latest update information, ", err)
+		return err
+	}
+
+	config := DevrigYamlConfig{
+		Devrig: DevrigSection{
+			Version:     updateInfo.Version,
+			ReleaseDate: updateInfo.ReleaseDate,
+			Binaries:    map[string]BinaryInfo{},
+		},
+	}
+
+	for _, b := range updateInfo.Binaries {
+		config.Devrig.Binaries[fmt.Sprintf("%s-%s", b.OS, b.Arch)] = BinaryInfo{
+			URL:    b.URL,
+			SHA512: b.SHA512,
+		}
+	}
+
+	// Generate devrig.yaml content
+	return writeNewDevrigYaml(targetDir, config)
 }
 
 // initializeFromLocalBinary creates devrig.yaml and copies the current binary to .devrig folder
@@ -115,14 +134,11 @@ func initializeFromLocalBinary(targetDir string) error {
 	log.Printf("Determined platform: %s\n", platform)
 
 	// Generate devrig.yaml content
-	yamlContent := generateDevrigYaml(platform, hash)
-
-	// Write devrig.yaml
-	yamlPath := filepath.Join(targetDir, "devrig.yaml")
-	if err := os.WriteFile(yamlPath, []byte(yamlContent), 0644); err != nil {
-		return fmt.Errorf("failed to write devrig.yaml: %w", err)
+	config := generateDevrigYamlModel(platform, hash)
+	err = writeNewDevrigYaml(targetDir, config)
+	if err != nil {
+		return err
 	}
-	log.Printf("Created devrig.yaml at: %s\n", yamlPath)
 
 	// Create .devrig directory
 	devrigDir := filepath.Join(targetDir, ".devrig")
@@ -155,89 +171,4 @@ func initializeFromLocalBinary(targetDir string) error {
 
 	log.Println("Local initialization completed successfully!")
 	return nil
-}
-
-// calculateFileHash calculates the SHA512 hash of a file
-func calculateFileHash(filePath string) (string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", err
-	}
-	//goland:noinspection GoUnhandledErrorResult
-	defer file.Close()
-
-	hash := sha512.New()
-	if _, err := io.Copy(hash, file); err != nil {
-		return "", err
-	}
-
-	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
-type DevrigYamlConfig struct {
-	Devrig DevrigSection `yaml:"devrig"`
-}
-
-type DevrigSection struct {
-	Binaries map[string]BinaryInfo `yaml:"binaries"`
-}
-
-type BinaryInfo struct {
-	URL    string `yaml:"url"`
-	SHA512 string `yaml:"sha512"`
-}
-
-func generateDevrigYaml(currentPlatform, currentHash string) string {
-	url := fmt.Sprintf("https://devrig.dev/local-build-fake-url/%s", currentPlatform)
-	if strings.Contains(currentPlatform, "windows") {
-		url += ".exe"
-	}
-
-	config := DevrigYamlConfig{
-		Devrig: DevrigSection{
-			Binaries: map[string]BinaryInfo{
-				currentPlatform: {
-					URL:    url,
-					SHA512: currentHash,
-				},
-			},
-		},
-	}
-
-	// Marshal to YAML
-	yamlBytes, err := yaml.Marshal(&config)
-	if err != nil {
-		// Fallback to simple string if marshaling fails
-		log.Fatalf("# Error generating YAML: %v\n", err)
-		return ""
-	}
-
-	// Add header comments
-	header := "# devrig.yaml - Main configuration file for devrig tool\n"
-	header += "# This file contains URLs and hash sums for devrig binaries across all supported platforms\n\n"
-
-	return header + string(yamlBytes)
-}
-
-// copyFile copies a file from src to dst
-func copyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	//goland:noinspection GoUnhandledErrorResult
-	defer sourceFile.Close()
-
-	destFile, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	//goland:noinspection GoUnhandledErrorResult
-	defer destFile.Close()
-
-	if _, err := io.Copy(destFile, sourceFile); err != nil {
-		return err
-	}
-
-	return destFile.Sync()
 }

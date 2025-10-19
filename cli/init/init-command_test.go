@@ -40,7 +40,7 @@ func TestInitCommand_DefaultDirectory(t *testing.T) {
 	var stdout bytes.Buffer
 	Cmd.SetOut(&stdout)
 	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{})
+	Cmd.SetArgs([]string{"--scripts-only"})
 
 	if err := Cmd.Execute(); err != nil {
 		t.Fatalf("Command failed: %v", err)
@@ -73,7 +73,7 @@ func TestInitCommand_SpecificDirectory(t *testing.T) {
 	var stdout bytes.Buffer
 	Cmd.SetOut(&stdout)
 	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{targetDir})
+	Cmd.SetArgs([]string{"--scripts-only", targetDir})
 
 	if err := Cmd.Execute(); err != nil {
 		t.Fatalf("Command failed: %v", err)
@@ -107,7 +107,7 @@ func TestInitCommand_RelativePath(t *testing.T) {
 	var stdout bytes.Buffer
 	Cmd.SetOut(&stdout)
 	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{"./subdir"})
+	Cmd.SetArgs([]string{"--scripts-only", "./subdir"})
 
 	if err := Cmd.Execute(); err != nil {
 		t.Fatalf("Command failed: %v", err)
@@ -385,7 +385,8 @@ func TestGenerateDevrigYaml(t *testing.T) {
 	testHash := "abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123de"
 	testPlatform := "linux-x86_64"
 
-	yamlStr := generateDevrigYaml(testPlatform, testHash)
+	config2 := generateDevrigYamlModel(testPlatform, testHash)
+	yamlStr := generateDevrigYamlContent(config2)
 
 	// Parse the generated YAML
 	var config DevrigConfig
@@ -429,7 +430,8 @@ func TestGenerateDevrigYaml(t *testing.T) {
 
 	// Test with Windows platform to verify .exe extension
 	t.Run("WindowsPlatform", func(t *testing.T) {
-		winYaml := generateDevrigYaml("windows-x86_64", testHash)
+		config3 := generateDevrigYamlModel("windows-x86_64", testHash)
+		winYaml := generateDevrigYamlContent(config3)
 		var winConfig DevrigConfig
 		if err := yaml.Unmarshal([]byte(winYaml), &winConfig); err != nil {
 			t.Fatalf("Failed to parse Windows YAML: %v", err)
