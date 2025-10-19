@@ -7,3 +7,6 @@ bazel-*
 # Bootstrap test generated files
 cli/bootstrap/test-config-*.yaml
 cli/bootstrap/.devrig/
+
+
+.aider*
