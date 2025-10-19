@@ -1,3 +1,5 @@
+We use `this_type_of_naming` for JSON and YAML fields.
+
 Use this file to add or update the project's specifications. It is helpful for humans and AI. 
 
 # Consistency and Security (TBD)

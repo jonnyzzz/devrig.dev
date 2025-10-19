@@ -119,7 +119,7 @@ jq -n \
     --arg version "${VERSION}" \
     --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --argjson releases "$(jq -s '.' < "${OUTPUT_DIR}/latest-tmp.json")" \
-    '{version: $version, releaseDate: $date, binaries: $releases}' \
+    '{version: $version, release_date: $date, binaries: $releases}' \
     > "${OUTPUT_DIR}/latest.json"
 
 rm "${OUTPUT_DIR}/latest-tmp.json"
