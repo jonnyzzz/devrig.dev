@@ -45,11 +45,13 @@ func doTheCommand(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to resolve directory path: %w", err)
 	}
+	log.Printf("Resolved target directory to: %s\n", absPath)
 
 	// Ensure directory exists
 	if err := os.MkdirAll(absPath, 0755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
+	log.Printf("Created directory: %s\n", absPath)
 
 	cmd.Printf("Initializing devrig.dev environment in: %s\n", absPath)
 
@@ -57,6 +59,7 @@ func doTheCommand(cmd *cobra.Command, args []string) error {
 	if err := bootstrap.CopyBootstrapScripts(absPath); err != nil {
 		return fmt.Errorf("failed to copy bootstrap scripts: %w", err)
 	}
+	log.Println("Bootstrap scripts created successfully!")
 
 	cmd.Println("Bootstrap scripts created successfully!")
 
@@ -70,6 +73,7 @@ func doTheCommand(cmd *cobra.Command, args []string) error {
 		if err := initializeFromLocalBinary(absPath); err != nil {
 			return fmt.Errorf("failed to initialize from local binary: %w", err)
 		}
+		log.Println("Local initialization completed successfully!")
 		cmd.Println("Local initialization completed successfully!")
 		return nil
 	}
@@ -79,23 +83,28 @@ func doTheCommand(cmd *cobra.Command, args []string) error {
 
 // initializeFromLocalBinary creates devrig.yaml and copies the current binary to .devrig folder
 func initializeFromLocalBinary(targetDir string) error {
+	log.Println("Initializing from local binary...")
+
 	// Get the current executable path
 	execPath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
+	log.Printf("Executable path: %s\n", execPath)
 
 	// Resolve symlinks if any
 	execPath, err = filepath.EvalSymlinks(execPath)
 	if err != nil {
 		return fmt.Errorf("failed to resolve symlinks: %w", err)
 	}
+	log.Printf("Resolved executable path: %s\n", execPath)
 
 	// Calculate hash of the current binary
 	hash, err := calculateFileHash(execPath)
 	if err != nil {
 		return fmt.Errorf("failed to calculate binary hash: %w", err)
 	}
+	log.Printf("Calculated binary hash: %s\n", hash)
 
 	// Determine OS and architecture
 	osName := runtime.GOOS
@@ -104,6 +113,7 @@ func initializeFromLocalBinary(targetDir string) error {
 		archName = "x86_64"
 	}
 	platform := fmt.Sprintf("%s-%s", osName, archName)
+	log.Printf("Determined platform: %s\n", platform)
 
 	// Generate devrig.yaml content
 	yamlContent := generateDevrigYaml(platform, hash)
@@ -113,35 +123,38 @@ func initializeFromLocalBinary(targetDir string) error {
 	if err := os.WriteFile(yamlPath, []byte(yamlContent), 0644); err != nil {
 		return fmt.Errorf("failed to write devrig.yaml: %w", err)
 	}
-	fmt.Printf("Created devrig.yaml at: %s\n", yamlPath)
+	log.Printf("Created devrig.yaml at: %s\n", yamlPath)
 
 	// Create .devrig directory
 	devrigDir := filepath.Join(targetDir, ".devrig")
 	if err := os.MkdirAll(devrigDir, 0755); err != nil {
 		return fmt.Errorf("failed to create .devrig directory: %w", err)
 	}
+	log.Printf("Created .devrig directory at: %s\n", devrigDir)
 
 	// Determine binary name based on the layout: .devrig/<tool-name>-<os>-<cpu-type>-<hash>/binary
 	binaryName := fmt.Sprintf("devrig-%s-%s-%s", osName, archName, hash)
 	if osName == "windows" {
 		binaryName += ".exe"
 	}
+	log.Printf("Determined binary name: %s\n", binaryName)
 
 	// Copy binary to .devrig folder
 	destPath := filepath.Join(devrigDir, binaryName)
 	if err := copyFile(execPath, destPath); err != nil {
 		return fmt.Errorf("failed to copy binary: %w", err)
 	}
+	log.Printf("Copied binary to: %s\n", destPath)
 
 	// Set executable permissions (Unix-like systems)
 	if osName != "windows" {
 		if err := os.Chmod(destPath, 0755); err != nil {
 			return fmt.Errorf("failed to set executable permissions: %w", err)
 		}
+		log.Printf("Set executable permissions for: %s\n", destPath)
 	}
 
-	fmt.Printf("Copied binary to: %s\n", destPath)
-
+	log.Println("Local initialization completed successfully!")
 	return nil
 }
 
