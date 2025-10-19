@@ -26,16 +26,6 @@ func NewDownloader() *Downloader {
 	}
 }
 
-// DownloadLatestJSON downloads the latest.json file
-func (d *Downloader) DownloadLatestJSON() ([]byte, error) {
-	return d.download(LatestJSONURL, "latest.json")
-}
-
-// DownloadLatestJSONSig downloads the latest.json.sig file
-func (d *Downloader) DownloadLatestJSONSig() ([]byte, error) {
-	return d.download(LatestJSONSigURL, "latest.json.sig")
-}
-
 // download is a helper method that performs the actual HTTP download
 func (d *Downloader) download(url, name string) ([]byte, error) {
 	resp, err := d.HTTPClient.Get(url)

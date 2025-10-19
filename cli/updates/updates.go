@@ -21,13 +21,13 @@ func NewClient() *Client {
 // This is the main entry point for getting update information
 func (c *Client) FetchLatestUpdateInfo() (*UpdateInfo, error) {
 	// Download latest.json
-	data, err := c.downloader.DownloadLatestJSON()
+	data, err := c.downloader.download(LatestJSONURL, "latest.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to download update info: %w", err)
 	}
 
 	// Download signature
-	signature, err := c.downloader.DownloadLatestJSONSig()
+	signature, err := c.downloader.download(LatestJSONSigURL, "latest.json.sig")
 	if err != nil {
 		return nil, fmt.Errorf("failed to download signature: %w", err)
 	}
@@ -38,24 +38,6 @@ func (c *Client) FetchLatestUpdateInfo() (*UpdateInfo, error) {
 	}
 
 	// Parse JSON
-	var updateInfo UpdateInfo
-	if err := json.Unmarshal(data, &updateInfo); err != nil {
-		return nil, fmt.Errorf("failed to parse update info: %w", err)
-	}
-
-	return &updateInfo, nil
-}
-
-// FetchLatestUpdateInfoUnsafe downloads and parses the latest update information without signature verification
-// WARNING: Only use this for testing or when signature verification is not required
-func (c *Client) FetchLatestUpdateInfoUnsafe() (*UpdateInfo, error) {
-	// Download latest.json
-	data, err := c.downloader.DownloadLatestJSON()
-	if err != nil {
-		return nil, fmt.Errorf("failed to download update info: %w", err)
-	}
-
-	// Parse JSON without verification
 	var updateInfo UpdateInfo
 	if err := json.Unmarshal(data, &updateInfo); err != nil {
 		return nil, fmt.Errorf("failed to parse update info: %w", err)
