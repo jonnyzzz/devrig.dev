@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"log"
 	_ "embed"
 	"fmt"
 	"os"
