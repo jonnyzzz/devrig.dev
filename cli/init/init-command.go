@@ -74,7 +74,6 @@ func doTheCommand(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to initialize from local binary: %w", err)
 		}
 		log.Println("Local initialization completed successfully!")
-		cmd.Println("Local initialization completed successfully!")
 		return nil
 	}
 
