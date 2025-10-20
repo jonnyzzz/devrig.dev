@@ -1,0 +1,4 @@
+- add .devrig to .gitignore near the devrig config files
+- Add `devrig` to spellchecker
+- Use AI to test code and specs
+- support Cursor
