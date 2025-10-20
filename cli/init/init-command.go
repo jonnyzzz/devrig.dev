@@ -15,6 +15,8 @@ import (
 
 type initCommandConfig struct {
 	updateService updates.UpdateService
+	scriptsOnly   bool
+	initFromLocal bool
 }
 
 func NewInitCommand(updateService updates.UpdateService) *cobra.Command {
@@ -28,8 +30,8 @@ func NewInitCommand(updateService updates.UpdateService) *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		RunE:  config.doTheCommand,
 	}
-	cmd.Flags().Bool("scripts-only", false, "Only generate bootstrap scripts")
-	cmd.Flags().Bool("init-from-local", false, "Initialize with the current binary and generate devrig.yaml")
+	cmd.Flags().BoolVar(&config.scriptsOnly, "scripts-only", false, "Only generate bootstrap scripts")
+	cmd.Flags().BoolVar(&config.initFromLocal, "init-from-local", false, "Initialize with the current binary and generate devrig.yaml")
 
 	return cmd
 }
@@ -60,14 +62,12 @@ func (c *initCommandConfig) doTheCommand(cmd *cobra.Command, args []string) erro
 	}
 	cmd.Println("Bootstrap scripts created successfully!")
 
-	scriptsOnly, _ := cmd.Flags().GetBool("scripts-only")
-	if scriptsOnly {
+	if c.scriptsOnly {
 		cmd.Println("Scripts-only mode: Skipping additional initialization")
 		return nil
 	}
 
-	initFromLocal, _ := cmd.Flags().GetBool("init-from-local")
-	if initFromLocal {
+	if c.initFromLocal {
 		cmd.Println("Initializing from local binary...")
 		if err := initializeFromLocalBinary(absPath); err != nil {
 			return fmt.Errorf("failed to initialize from local binary: %w", err)
