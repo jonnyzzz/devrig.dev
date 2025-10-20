@@ -163,8 +163,10 @@ jq -c '(.binaries // .releases)[]' latest.json | while IFS= read -r binary_json;
        '. + {url: $url, filename: $filename}' >> binaries.jsonl
 done
 
-# Build final JSON
-jq -s '{binaries: .}' binaries.jsonl > latest.final.json
+# Build final JSON by keeping original structure and only replacing binaries section
+jq -s --slurpfile original latest.json '
+  $original[0] + {binaries: .}
+' binaries.jsonl > latest.final.json
 
 echo "✓ Generated latest.final.json"
 
