@@ -4,13 +4,13 @@ import "runtime"
 
 // UpdateInfo represents the current update information
 type UpdateInfo struct {
-	Version     string   `json:"version"`
-	ReleaseDate string   `json:"release_date"`
-	Binaries    []Binary `json:"binaries"`
+	Version     string       `json:"version"`
+	ReleaseDate string       `json:"release_date"`
+	Binaries    []BinaryInfo `json:"binaries"`
 }
 
-// Binary represents a single binary distribution
-type Binary struct {
+// BinaryInfo represents a single binary distribution
+type BinaryInfo struct {
 	Filename string `json:"filename"`
 	OS       string `json:"os"`
 	Arch     string `json:"arch"`

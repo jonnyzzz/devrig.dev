@@ -47,13 +47,13 @@ func (c *Client) FetchLatestUpdateInfo() (*UpdateInfo, error) {
 }
 
 // FindBinaryForCurrentSystem finds a binary matching the current OS and architecture
-func (updateInfo *UpdateInfo) FindBinaryForCurrentSystem() *Binary {
+func (updateInfo *UpdateInfo) FindBinaryForCurrentSystem() *BinaryInfo {
 	sys := CurrentSystem{}
 	return updateInfo.FindBinary(sys.OS(), sys.Arch())
 }
 
 // FindBinary finds a binary matching the given OS and architecture
-func (updateInfo *UpdateInfo) FindBinary(os, arch string) *Binary {
+func (updateInfo *UpdateInfo) FindBinary(os, arch string) *BinaryInfo {
 	for i := range updateInfo.Binaries {
 		binary := &updateInfo.Binaries[i]
 		if binary.OS == os && binary.Arch == arch {

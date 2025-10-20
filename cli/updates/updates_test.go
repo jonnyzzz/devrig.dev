@@ -174,19 +174,19 @@ func TestParseRealJSONFile(t *testing.T) {
 	// Verify structure
 	for i, binary := range updateInfo.Binaries {
 		if binary.Filename == "" {
-			t.Errorf("Binary %d has empty filename", i)
+			t.Errorf("BinaryInfo %d has empty filename", i)
 		}
 		if binary.OS == "" {
-			t.Errorf("Binary %d has empty OS", i)
+			t.Errorf("BinaryInfo %d has empty OS", i)
 		}
 		if binary.Arch == "" {
-			t.Errorf("Binary %d has empty Arch", i)
+			t.Errorf("BinaryInfo %d has empty Arch", i)
 		}
 		if binary.SHA512 == "" {
-			t.Errorf("Binary %d has empty SHA512", i)
+			t.Errorf("BinaryInfo %d has empty SHA512", i)
 		}
 		if binary.URL == "" {
-			t.Errorf("Binary %d has empty URL", i)
+			t.Errorf("BinaryInfo %d has empty URL", i)
 		}
 	}
 }
@@ -212,7 +212,7 @@ func TestClient_FetchLatestUpdateInfo(t *testing.T) {
 
 func TestUpdateInfo_FindBinaryForCurrentSystem(t *testing.T) {
 	updateInfo := &UpdateInfo{
-		Binaries: []Binary{
+		Binaries: []BinaryInfo{
 			{
 				Filename: "devrig-darwin-arm64",
 				OS:       "darwin",
@@ -241,7 +241,7 @@ func TestUpdateInfo_FindBinaryForCurrentSystem(t *testing.T) {
 
 func TestUpdateInfo_FindBinary(t *testing.T) {
 	updateInfo := &UpdateInfo{
-		Binaries: []Binary{
+		Binaries: []BinaryInfo{
 			{
 				Filename: "devrig-darwin-arm64",
 				OS:       "darwin",
