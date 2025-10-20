@@ -1,9 +1,9 @@
 package bootstrap
 
 import (
-	"log"
 	_ "embed"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 )
