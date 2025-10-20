@@ -19,6 +19,7 @@ docker run -i --rm \
        -e BUILD_INSIDE_DOCKER=YES \
        -e "BUILD_CURRENT_ONLY=${BUILD_CURRENT_ONLY:-NONE}" \
        -e "DEVRIG_VERSION=${DEVRIG_VERSION:-NONE}" \
+       -e "BUILD_NUMBER=${BUILD_NUMBER:-SNAPSHOT}" \
        --workdir "/devrig-base-cli" \
        $BUILDER_IMAGE \
        /devrig-base-cli/build-in-docker-sandbox.sh
