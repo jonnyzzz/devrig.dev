@@ -1,4 +1,6 @@
 {
+  "version": "0.79.6",
+  "release_date": "2025-10-20T14:30:05Z",
   "binaries": [
     {
       "os": "darwin",
