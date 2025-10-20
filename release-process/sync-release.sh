@@ -32,7 +32,6 @@ EOF
 
 # Parse arguments
 TAG=""
-SSH_KEY_ID="devrig key 1"
 WORK_DIR="${SCRIPT_DIR}/downloads"
 
 rm -rf "${WORK_DIR}" || true
@@ -179,7 +178,8 @@ if [ ! -x "$SSH_SIGN_SCRIPT" ]; then
     exit 1
 fi
 
-"$SSH_SIGN_SCRIPT" --sign "$(cat latest.final.json)" "$SSH_KEY_ID" > latest.final.json.sig
+SSH_KEY_ID="$($SSH_SIGN_SCRIPT --list | grep "devrig key 1")"
+"$SSH_SIGN_SCRIPT" --sign latest.final.json latest.final.json.sig "$SSH_KEY_ID"
 
 if [ ! -s latest.final.json.sig ]; then
     log_error "Failed to create signature"
