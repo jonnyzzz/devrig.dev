@@ -11,27 +11,53 @@ import (
 	"jonnyzzz.com/devrig.dev/feed"
 	initCmd "jonnyzzz.com/devrig.dev/init"
 	"jonnyzzz.com/devrig.dev/unpack"
+	"jonnyzzz.com/devrig.dev/updates"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "devrig",
-	Short: fmt.Sprintf("Devrig v%s - Your development entry point", VersionAndBuild()),
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Select subcommand to use devrig")
-		fmt.Println("")
-		cmd.HelpFunc()(cmd, args)
-		os.Exit(11)
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(versionCmd)
-	rootCmd.AddCommand(initCmd.Cmd)
-}
-
 func main() {
-	if err := rootCmd.Execute(); err != nil {
+	updatesService := updates.NewUpdateService(VersionAndBuild())
+
+	rootCmd := newRootCommand(updatesService)
+	rootCmd.AddCommand(NewVersionCommand())
+	rootCmd.AddCommand(initCmd.NewInitCommand(updatesService))
+
+	executeRootCommand(rootCmd)
+}
+
+func newRootCommand(updatesService updates.UpdateService) *cobra.Command {
+	var noUpdates bool
+	rootCmd := &cobra.Command{
+		Use:   "devrig",
+		Short: fmt.Sprintf("Devrig v%s - Your development entry point", VersionAndBuild()),
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Select subcommand to use devrig")
+			fmt.Println("")
+			cmd.HelpFunc()(cmd, args)
+			os.Exit(11)
+		},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			if !noUpdates {
+				go func() {
+					//just fetch the update info
+					update, err := updatesService.IsUpdateAvailable()
+					if err == nil && update {
+						fmt.Print("\n\nUpdate available\n\n")
+					}
+				}()
+			}
+		},
+	}
+
+	rootCmd.Flags().BoolVar(&noUpdates, "no-updates", false, "Do not check for updates")
+	return rootCmd
+}
+
+func executeRootCommand(rootCmd *cobra.Command) {
+	err := rootCmd.Execute()
+	if err != nil {
 		os.Exit(1)
+	} else {
+		os.Exit(0)
 	}
 }
 

@@ -13,23 +13,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var scriptsOnly bool
-var initFromLocal bool
+type initCommandConfig struct {
+	updateService updates.UpdateService
+}
 
-var Cmd *cobra.Command
+func NewInitCommand(updateService updates.UpdateService) *cobra.Command {
+	config := &initCommandConfig{
+		updateService: updateService,
+	}
 
-func init() {
-	Cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "init [directory]",
 		Short: "Initialize the devrig.dev environment",
 		Args:  cobra.MaximumNArgs(1),
-		RunE:  doTheCommand,
+		RunE:  config.doTheCommand,
 	}
-	Cmd.Flags().BoolVar(&scriptsOnly, "scripts-only", false, "Only generate bootstrap scripts")
-	Cmd.Flags().BoolVar(&initFromLocal, "init-from-local", false, "Initialize with the current binary and generate devrig.yaml")
+	cmd.Flags().Bool("scripts-only", false, "Only generate bootstrap scripts")
+	cmd.Flags().Bool("init-from-local", false, "Initialize with the current binary and generate devrig.yaml")
+
+	return cmd
 }
 
-func doTheCommand(cmd *cobra.Command, args []string) error {
+func (c *initCommandConfig) doTheCommand(cmd *cobra.Command, args []string) error {
 	// Determine target directory
 	targetDir := "."
 	if len(args) > 0 {
@@ -55,11 +60,13 @@ func doTheCommand(cmd *cobra.Command, args []string) error {
 	}
 	cmd.Println("Bootstrap scripts created successfully!")
 
+	scriptsOnly, _ := cmd.Flags().GetBool("scripts-only")
 	if scriptsOnly {
 		cmd.Println("Scripts-only mode: Skipping additional initialization")
 		return nil
 	}
 
+	initFromLocal, _ := cmd.Flags().GetBool("init-from-local")
 	if initFromLocal {
 		cmd.Println("Initializing from local binary...")
 		if err := initializeFromLocalBinary(absPath); err != nil {
@@ -69,12 +76,11 @@ func doTheCommand(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	return initializeFromUpdates(cmd, targetDir)
+	return c.initializeFromUpdates(cmd, targetDir)
 }
 
-func initializeFromUpdates(cmd *cobra.Command, targetDir string) error {
-	client := updates.NewClient()
-	updateInfo, err := client.FetchLatestUpdateInfo()
+func (c *initCommandConfig) initializeFromUpdates(cmd *cobra.Command, targetDir string) error {
+	updateInfo, err := c.updateService.LastUpdateInfo()
 	if err != nil {
 		cmd.PrintErr("Failed to fetch latest update information, ", err)
 		return err
@@ -94,6 +100,8 @@ func initializeFromUpdates(cmd *cobra.Command, targetDir string) error {
 			SHA512: b.SHA512,
 		}
 	}
+
+	//TODO: create .devrig cache if version is the same (or no network)
 
 	// Generate devrig.yaml content
 	return writeNewDevrigYaml(targetDir, config)

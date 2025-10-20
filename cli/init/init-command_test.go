@@ -9,8 +9,27 @@ import (
 	"strings"
 	"testing"
 
+	"jonnyzzz.com/devrig.dev/updates"
+
 	"github.com/goccy/go-yaml"
+	"github.com/spf13/cobra"
 )
+
+// mockUpdateService is a mock implementation of UpdateService for testing
+type mockUpdateService struct{}
+
+func (t *mockUpdateService) LastUpdateInfo() (*updates.UpdateInfo, error) {
+	return nil, fmt.Errorf("not implemented for tests")
+}
+
+func (t *mockUpdateService) IsUpdateAvailable() (bool, error) {
+	return false, fmt.Errorf("not implemented for tests")
+}
+
+// newTestInitCommand creates a new init command with mock dependencies for testing
+func newTestInitCommand() *cobra.Command {
+	return NewInitCommand(&mockUpdateService{})
+}
 
 // DevrigConfig represents the structure of devrig.yaml
 type DevrigConfig struct {
@@ -37,12 +56,13 @@ func TestInitCommand_DefaultDirectory(t *testing.T) {
 	}
 
 	// Execute the command
+	cmd := newTestInitCommand()
 	var stdout bytes.Buffer
-	Cmd.SetOut(&stdout)
-	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{"--scripts-only"})
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--scripts-only"})
 
-	if err := Cmd.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Command failed: %v", err)
 	}
 
@@ -70,12 +90,13 @@ func TestInitCommand_SpecificDirectory(t *testing.T) {
 	targetDir := filepath.Join(tempDir, "my-project")
 
 	// Execute the command
+	cmd := newTestInitCommand()
 	var stdout bytes.Buffer
-	Cmd.SetOut(&stdout)
-	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{"--scripts-only", targetDir})
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--scripts-only", targetDir})
 
-	if err := Cmd.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Command failed: %v", err)
 	}
 
@@ -104,12 +125,13 @@ func TestInitCommand_RelativePath(t *testing.T) {
 	}
 
 	// Execute the command with relative path
+	cmd := newTestInitCommand()
 	var stdout bytes.Buffer
-	Cmd.SetOut(&stdout)
-	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{"--scripts-only", "./subdir"})
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--scripts-only", "./subdir"})
 
-	if err := Cmd.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Command failed: %v", err)
 	}
 
@@ -128,12 +150,13 @@ func TestInitCommand_ScriptsOnly(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Execute the command with --scripts-only flag
+	cmd := newTestInitCommand()
 	var stdout bytes.Buffer
-	Cmd.SetOut(&stdout)
-	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{"--scripts-only", tempDir})
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--scripts-only", tempDir})
 
-	if err := Cmd.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Command failed: %v", err)
 	}
 
@@ -158,12 +181,13 @@ func TestInitCommand_NestedDirectory(t *testing.T) {
 	targetDir := filepath.Join(tempDir, "level1", "level2", "level3")
 
 	// Execute the command
+	cmd := newTestInitCommand()
 	var stdout bytes.Buffer
-	Cmd.SetOut(&stdout)
-	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{targetDir})
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--scripts-only", targetDir})
 
-	if err := Cmd.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		t.Fatalf("Command failed: %v", err)
 	}
 
@@ -186,12 +210,13 @@ func TestInitCommand_TooManyArgs(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Execute the command with too many arguments
+	cmd := newTestInitCommand()
 	var stdout bytes.Buffer
-	Cmd.SetOut(&stdout)
-	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{tempDir, "extra-arg"})
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{tempDir, "extra-arg"})
 
-	err := Cmd.Execute()
+	err := cmd.Execute()
 	if err == nil {
 		t.Errorf("Expected error when providing too many arguments")
 	}
@@ -201,17 +226,14 @@ func TestInitCommand_InitFromLocal(t *testing.T) {
 	tempDir := t.TempDir()
 	targetDir := filepath.Join(tempDir, "local-init")
 
-	// Reset flags to avoid contamination from other tests
-	scriptsOnly = false
-	initFromLocal = false
-
 	// Execute the command with --init-from-local flag
+	cmd := newTestInitCommand()
 	var stdout bytes.Buffer
-	Cmd.SetOut(&stdout)
-	Cmd.SetErr(&stdout)
-	Cmd.SetArgs([]string{"--init-from-local", targetDir})
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--init-from-local", targetDir})
 
-	err := Cmd.Execute()
+	err := cmd.Execute()
 	if err != nil {
 		t.Fatalf("Command failed: %v", err)
 	}
@@ -324,7 +346,7 @@ func TestInitCommand_InitFromLocal(t *testing.T) {
 						t.Fatalf("Failed to stat binary: %v", err)
 					}
 					if info.Mode().Perm()&0111 == 0 {
-						t.Errorf("Binary is not executable, mode: %v", info.Mode())
+						t.Errorf("BinaryInfo is not executable, mode: %v", info.Mode())
 					}
 				}
 				break
@@ -333,7 +355,7 @@ func TestInitCommand_InitFromLocal(t *testing.T) {
 	}
 
 	if !binaryFound {
-		t.Errorf("Binary not found in .devrig directory")
+		t.Errorf("BinaryInfo not found in .devrig directory")
 	}
 }
 
@@ -543,13 +565,13 @@ func TestInitializeFromLocalBinary(t *testing.T) {
 
 				// Verify binary size is non-zero
 				if info.Size() == 0 {
-					t.Errorf("Binary has zero size")
+					t.Errorf("BinaryInfo has zero size")
 				}
 
 				// Verify executable permissions on Unix-like systems
 				if runtime.GOOS != "windows" {
 					if info.Mode().Perm()&0111 == 0 {
-						t.Errorf("Binary is not executable")
+						t.Errorf("BinaryInfo is not executable")
 					}
 				}
 				break
@@ -558,7 +580,7 @@ func TestInitializeFromLocalBinary(t *testing.T) {
 	}
 
 	if !binaryFound {
-		t.Errorf("Binary was not copied to .devrig directory")
+		t.Errorf("BinaryInfo was not copied to .devrig directory")
 	}
 
 	// Read and parse devrig.yaml
