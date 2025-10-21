@@ -1,0 +1,1 @@
+cli/bootstrap/devrig.ps1
