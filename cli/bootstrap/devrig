@@ -176,4 +176,7 @@ if [ "${DEVRIG_DEBUG_NO_EXEC:-no}" = "1" ]; then
   exit 45
 fi
 
+# Export DEVRIG_CONFIG for the tool to use
+export DEVRIG_CONFIG
+
 exec "$DEVRIG_BIN" "$@"

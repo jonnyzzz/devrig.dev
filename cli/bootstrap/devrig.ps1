@@ -217,6 +217,9 @@ if ($env:DEVRIG_DEBUG_NO_EXEC -eq "1") {
     exit 45
 }
 
+# Set DEVRIG_CONFIG environment variable for the tool to use
+$env:DEVRIG_CONFIG = $DEVRIG_CONFIG
+
 # Execute devrig binary with all passed arguments
 Write-Host "[INFO] Executing devrig..."
 
