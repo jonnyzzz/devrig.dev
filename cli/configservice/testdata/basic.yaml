@@ -1,0 +1,13 @@
+# devrig.yaml - Main configuration file for devrig tool
+# This file contains URLs and hash sums for devrig binaries across all supported platforms
+
+devrig:
+  version: v0.79.6
+  release_date: 2025-01-15
+  binaries:
+    darwin-arm64:
+      url: https://github.com/jonnyzzz/devrig.dev/releases/download/v0.79.6/devrig-darwin-arm64
+      sha512: 0930503846a3d3fcbadee9f213dc791a22d55648899b185c14cf007869f61f437fd1570f80604a868f73784c4f204771503f22d02a58f7f9aafb51296ca54d0f
+    linux-x86_64:
+      url: https://github.com/jonnyzzz/devrig.dev/releases/download/v0.79.6/devrig-linux-x86_64
+      sha512: 32edfe3c26cf6417fcfa84e479d23952918ac8aab06b58dd854b0e462c1828db912b341bd20c03034d390ebf9733a02d51c173272535d92b1ba333a791ee97b0

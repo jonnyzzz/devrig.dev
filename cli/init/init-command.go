@@ -8,6 +8,7 @@ import (
 	"runtime"
 
 	"jonnyzzz.com/devrig.dev/bootstrap"
+	"jonnyzzz.com/devrig.dev/configservice"
 	"jonnyzzz.com/devrig.dev/updates"
 
 	"github.com/spf13/cobra"
@@ -67,68 +68,74 @@ func (c *initCommandConfig) doTheCommand(cmd *cobra.Command, args []string) erro
 		return nil
 	}
 
+	var devrigBinaries *configservice.DevrigSection = nil
 	if c.initFromLocal {
 		cmd.Println("Initializing from local binary...")
-		if err := initializeFromLocalBinary(absPath); err != nil {
+		if devrigBinaries, err = c.initializeFromLocalBinary(targetDir); err != nil {
 			return fmt.Errorf("failed to initialize from local binary: %w", err)
 		}
 		cmd.Println("Local initialization completed successfully!")
-		return nil
+	} else {
+		if devrigBinaries, err = c.initializeFromUpdates(cmd); err != nil {
+			return fmt.Errorf("failed to initialize from local binary: %w", err)
+		}
 	}
+	return configservice.NewConfigService(filepath.Join(absPath, "devrig.yaml")).
+		Binaries().UpdateBinaries(
 
-	return c.initializeFromUpdates(cmd, targetDir)
+		devrigBinaries,
+	)
 }
 
-func (c *initCommandConfig) initializeFromUpdates(cmd *cobra.Command, targetDir string) error {
+func (c *initCommandConfig) initializeFromUpdates(cmd *cobra.Command) (*configservice.DevrigSection, error) {
 	updateInfo, err := c.updateService.LastUpdateInfo()
 	if err != nil {
 		cmd.PrintErr("Failed to fetch latest update information, ", err)
-		return err
+		return nil, err
 	}
 
-	config := DevrigYamlConfig{
-		Devrig: DevrigSection{
-			Version:     updateInfo.Version,
-			ReleaseDate: updateInfo.ReleaseDate,
-			Binaries:    map[string]BinaryInfo{},
-		},
-	}
-
+	// Convert binaries from update info to configservice format
+	binaries := make(map[string]configservice.BinaryInfo)
 	for _, b := range updateInfo.Binaries {
-		config.Devrig.Binaries[fmt.Sprintf("%s-%s", b.OS, b.Arch)] = BinaryInfo{
+		binaries[fmt.Sprintf("%s-%s", b.OS, b.Arch)] = configservice.BinaryInfo{
 			URL:    b.URL,
 			SHA512: b.SHA512,
 		}
 	}
 
-	//TODO: create .devrig cache if version is the same (or no network)
+	// Generate devrig section
+	log.Printf("Generating devrig section: version=%s, release_date=%s, binaries=%d\n", updateInfo.Version, updateInfo.ReleaseDate, len(binaries))
+	update := &configservice.DevrigSection{
+		Version:     updateInfo.Version,
+		ReleaseDate: updateInfo.ReleaseDate,
+		Binaries:    binaries,
+	}
 
-	// Generate devrig.yaml content
-	return writeNewDevrigYaml(targetDir, config)
+	return update, nil
 }
 
 // initializeFromLocalBinary creates devrig.yaml and copies the current binary to .devrig folder
-func initializeFromLocalBinary(targetDir string) error {
+func (c *initCommandConfig) initializeFromLocalBinary(targetDir string) (*configservice.DevrigSection, error) {
 	log.Println("Initializing from local binary...")
 
 	// Get the current executable path
 	execPath, err := os.Executable()
 	if err != nil {
-		return fmt.Errorf("failed to get executable path: %w", err)
+		return nil, fmt.Errorf("failed to get executable path: %w", err)
 	}
 	log.Printf("Executable path: %s\n", execPath)
 
 	// Resolve symlinks if any
 	execPath, err = filepath.EvalSymlinks(execPath)
 	if err != nil {
-		return fmt.Errorf("failed to resolve symlinks: %w", err)
+		return nil, fmt.Errorf("failed to resolve symlinks: %w", err)
 	}
 	log.Printf("Resolved executable path: %s\n", execPath)
 
 	// Calculate hash of the current binary
 	hash, err := calculateFileHash(execPath)
 	if err != nil {
-		return fmt.Errorf("failed to calculate binary hash: %w", err)
+		return nil, fmt.Errorf("failed to calculate binary hash: %w", err)
 	}
 	log.Printf("Calculated binary hash: %s\n", hash)
 
@@ -141,17 +148,10 @@ func initializeFromLocalBinary(targetDir string) error {
 	platform := fmt.Sprintf("%s-%s", osName, archName)
 	log.Printf("Determined platform: %s\n", platform)
 
-	// Generate devrig.yaml content
-	config := generateDevrigYamlModel(platform, hash)
-	err = writeNewDevrigYaml(targetDir, config)
-	if err != nil {
-		return err
-	}
-
 	// Create .devrig directory
 	devrigDir := filepath.Join(targetDir, ".devrig")
 	if err := os.MkdirAll(devrigDir, 0755); err != nil {
-		return fmt.Errorf("failed to create .devrig directory: %w", err)
+		return nil, fmt.Errorf("failed to create .devrig directory: %w", err)
 	}
 	log.Printf("Created .devrig directory at: %s\n", devrigDir)
 
@@ -165,18 +165,21 @@ func initializeFromLocalBinary(targetDir string) error {
 	// Copy binary to .devrig folder
 	destPath := filepath.Join(devrigDir, binaryName)
 	if err := copyFile(execPath, destPath); err != nil {
-		return fmt.Errorf("failed to copy binary: %w", err)
+		return nil, fmt.Errorf("failed to copy binary: %w", err)
 	}
 	log.Printf("Copied binary to: %s\n", destPath)
 
 	// Set executable permissions (Unix-like systems)
 	if osName != "windows" {
 		if err := os.Chmod(destPath, 0755); err != nil {
-			return fmt.Errorf("failed to set executable permissions: %w", err)
+			return nil, fmt.Errorf("failed to set executable permissions: %w", err)
 		}
 		log.Printf("Set executable permissions for: %s\n", destPath)
 	}
 
 	log.Println("Local initialization completed successfully!")
-	return nil
+
+	// Generate devrig section
+	section := generateDevrigSection(platform, hash)
+	return section, nil
 }

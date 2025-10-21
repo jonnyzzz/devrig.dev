@@ -19,6 +19,7 @@ var devrigPs1 []byte
 
 // CopyBootstrapScripts copies all bootstrap scripts (devrig, devrig.bat, devrig.ps1)
 // to the specified directory with appropriate permissions.
+// Returns an error if any of the target files are symlinks.
 func CopyBootstrapScripts(targetDir string) error {
 	log.Printf("Creating target directory: %s\n", targetDir)
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
@@ -38,6 +39,13 @@ func CopyBootstrapScripts(targetDir string) error {
 	for _, script := range scripts {
 		path := filepath.Join(targetDir, script.name)
 		log.Printf("Writing %s to %s with mode %o\n", script.name, path, script.mode)
+		if info, err := os.Lstat(path); err == nil {
+			if info.Mode()&os.ModeSymlink != 0 {
+				log.Printf("Skipping '%s' because it is a symlink\n", script.name)
+				continue
+			}
+		}
+
 		if err := os.WriteFile(path, script.content, script.mode); err != nil {
 			return fmt.Errorf("failed to write %s: %w", script.name, err)
 		}

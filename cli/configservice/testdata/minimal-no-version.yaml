@@ -1,0 +1,6 @@
+# Minimal configuration without version/release_date
+devrig:
+  binaries:
+    darwin-arm64:
+      url: https://github.com/jonnyzzz/devrig.dev/releases/download/v0.79.6/devrig-darwin-arm64
+      sha512: 0930503846a3d3fcbadee9f213dc791a22d55648899b185c14cf007869f61f437fd1570f80604a868f73784c4f204771503f22d02a58f7f9aafb51296ca54d0f

@@ -407,26 +407,19 @@ func TestGenerateDevrigYaml(t *testing.T) {
 	testHash := "abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123def456abc123de"
 	testPlatform := "linux-x86_64"
 
-	config2 := generateDevrigYamlModel(testPlatform, testHash)
-	yamlStr := generateDevrigYamlContent(config2)
-
-	// Parse the generated YAML
-	var config DevrigConfig
-	if err := yaml.Unmarshal([]byte(yamlStr), &config); err != nil {
-		t.Fatalf("Failed to parse generated YAML: %v", err)
-	}
+	section := generateDevrigSection(testPlatform, testHash)
 
 	// Verify only test platform is present
-	if len(config.Devrig.Binaries) != 1 {
-		t.Errorf("Expected 1 platform, got %d", len(config.Devrig.Binaries))
+	if len(section.Binaries) != 1 {
+		t.Errorf("Expected 1 platform, got %d", len(section.Binaries))
 	}
 
-	if _, exists := config.Devrig.Binaries[testPlatform]; !exists {
-		t.Errorf("Test platform %s not found in generated YAML", testPlatform)
+	if _, exists := section.Binaries[testPlatform]; !exists {
+		t.Errorf("Test platform %s not found in generated section", testPlatform)
 	}
 
 	// Verify platform has correct URL and SHA512
-	if testBinary, exists := config.Devrig.Binaries[testPlatform]; exists {
+	if testBinary, exists := section.Binaries[testPlatform]; exists {
 		// Verify URL structure
 		if testBinary.URL == "" {
 			t.Errorf("Platform %s has empty URL", testPlatform)
@@ -452,14 +445,9 @@ func TestGenerateDevrigYaml(t *testing.T) {
 
 	// Test with Windows platform to verify .exe extension
 	t.Run("WindowsPlatform", func(t *testing.T) {
-		config3 := generateDevrigYamlModel("windows-x86_64", testHash)
-		winYaml := generateDevrigYamlContent(config3)
-		var winConfig DevrigConfig
-		if err := yaml.Unmarshal([]byte(winYaml), &winConfig); err != nil {
-			t.Fatalf("Failed to parse Windows YAML: %v", err)
-		}
+		winSection := generateDevrigSection("windows-x86_64", testHash)
 
-		if winBinary, exists := winConfig.Devrig.Binaries["windows-x86_64"]; exists {
+		if winBinary, exists := winSection.Binaries["windows-x86_64"]; exists {
 			if !strings.HasSuffix(winBinary.URL, ".exe") {
 				t.Errorf("Windows platform URL doesn't have .exe extension: %s", winBinary.URL)
 			}
@@ -519,15 +507,16 @@ func TestInitializeFromLocalBinary(t *testing.T) {
 	tempDir := t.TempDir()
 	targetDir := filepath.Join(tempDir, "init-target")
 
-	// Create target directory
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		t.Fatalf("Failed to create target directory: %v", err)
-	}
+	// Execute the init command with --init-from-local flag
+	cmd := newTestInitCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--init-from-local", targetDir})
 
-	// Run initializeFromLocalBinary
-	err := initializeFromLocalBinary(targetDir)
+	err := cmd.Execute()
 	if err != nil {
-		t.Fatalf("initializeFromLocalBinary failed: %v", err)
+		t.Fatalf("initializeFromLocalBinary failed: %v\nOutput: %s", err, stdout.String())
 	}
 
 	// Verify devrig.yaml was created
@@ -626,5 +615,46 @@ func TestInitializeFromLocalBinary(t *testing.T) {
 		if len(binary.SHA512) != 128 {
 			t.Errorf("Platform %s has invalid SHA512 length: %d", plat, len(binary.SHA512))
 		}
+	}
+}
+
+// TestInitCommand_DetectsSymlinks tests that init command detects and warns about symlinked bootstrap scripts
+func TestInitCommand_DetectsSymlinks(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create a symlink for one of the bootstrap scripts
+	symlinkPath := filepath.Join(tempDir, "devrig")
+	targetPath := filepath.Join(tempDir, "some-other-file")
+
+	// Create a dummy target file
+	if err := os.WriteFile(targetPath, []byte("dummy"), 0755); err != nil {
+		t.Fatalf("Failed to create dummy target: %v", err)
+	}
+
+	// Create symlink
+	if err := os.Symlink(targetPath, symlinkPath); err != nil {
+		t.Fatalf("Failed to create symlink: %v", err)
+	}
+
+	// Execute the init command
+	cmd := newTestInitCommand()
+	var stdout bytes.Buffer
+	cmd.SetOut(&stdout)
+	cmd.SetErr(&stdout)
+	cmd.SetArgs([]string{"--scripts-only", tempDir})
+
+	//we do not care about the error here
+	err := cmd.Execute()
+	if err != nil {
+		t.Fatalf("init failed: %v\nOutput: %s", err, stdout.String())
+	}
+
+	info, err := os.Lstat(symlinkPath)
+	if err != nil {
+		t.Errorf("Failed to read symlink path %v", err)
+	}
+
+	if info.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("Must still be a symlink")
 	}
 }

@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"jonnyzzz.com/devrig.dev/config"
+	"jonnyzzz.com/devrig.dev/configservice"
 	"jonnyzzz.com/devrig.dev/feed"
 	initCmd "jonnyzzz.com/devrig.dev/init"
 	"jonnyzzz.com/devrig.dev/unpack"
@@ -21,7 +23,42 @@ func main() {
 	rootCmd.AddCommand(NewVersionCommand())
 	rootCmd.AddCommand(initCmd.NewInitCommand(updatesService))
 
+	var devrigConfigPath string
+	// Add global --devrig-config flag
+	rootCmd.PersistentFlags().StringVar(&devrigConfigPath, "devrig-config", "", "Path to devrig.yaml configuration file")
+
+	configs := configservice.NewConfigService(ResolveDevrigConfigPath(devrigConfigPath))
+	configs.Binaries()
+
 	executeRootCommand(rootCmd)
+}
+
+// ResolveDevrigConfigPath resolves the path to devrig.yaml using the following precedence:
+// 1. --devrig-config flag
+// 2. DEVRIG_CONFIG environment variable
+// 3. ./devrig.yaml (current directory)
+// Always returns an absolute path.
+func ResolveDevrigConfigPath(devrigConfigPath string) string {
+	var path string
+
+	// 1. Check command-line flag
+	if devrigConfigPath != "" {
+		path = devrigConfigPath
+	} else if envPath := os.Getenv("DEVRIG_CONFIG"); envPath != "" {
+		// 2. Check environment variable
+		path = envPath
+	} else {
+		// 3. Default to current directory
+		path = filepath.Join(".", "devrig.yaml")
+	}
+
+	// Always return absolute path
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		// If we can't resolve, return as-is (shouldn't happen in practice)
+		return path
+	}
+	return absPath
 }
 
 func newRootCommand(updatesService updates.UpdateService) *cobra.Command {
