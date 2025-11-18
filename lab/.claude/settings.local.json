@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(./download.py:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:windsurf.com)",
+      "Bash(uv run:*)",
+      "Bash(curl:*)",
+      "Bash(tree:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
