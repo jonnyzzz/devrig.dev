@@ -8,6 +8,7 @@
     --anthropic-gray: #E0E0E0;
     --anthropic-gray-dark: #808080;
     --anthropic-gray-darker: #404040;
+    --anthropic-gray-light: #2D3748;
 }
 
 * {
@@ -21,6 +22,9 @@ body {
     line-height: 1.6;
     color: var(--anthropic-white);
     background-color: var(--anthropic-blue);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .container {
@@ -31,10 +35,12 @@ body {
 
 header {
     background: var(--anthropic-blue-light);
-    box-shadow: 0 2px 8px rgba(0, 230, 194, 0.1);
+    box-shadow: 0 2px 12px rgba(0, 230, 194, 0.15);
     position: sticky;
     top: 0;
     z-index: 100;
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(0, 230, 194, 0.1);
 }
 
 nav {
@@ -50,7 +56,7 @@ nav .container {
 .logo {
     font-family: 'JetBrains Mono', 'Fira Code', SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 1.5rem;
-    font-weight: bold;
+    font-weight: 700;
     color: var(--anthropic-teal);
     text-decoration: none;
     display: flex;
@@ -62,6 +68,7 @@ nav .container {
     height: 48px;
     width: 48px;
     transition: transform 0.2s;
+    filter: drop-shadow(0 0 4px rgba(0, 230, 194, 0.3));
 }
 
 .logo:hover .logo-image {
@@ -72,16 +79,35 @@ nav .container {
     display: flex;
     list-style: none;
     gap: 2rem;
+    align-items: center;
 }
 
 .nav-links a {
     color: var(--anthropic-white);
     text-decoration: none;
     font-weight: 500;
+    position: relative;
+    padding: 0.5rem 0;
+    transition: color 0.2s;
 }
 
 .nav-links a:hover {
     color: var(--anthropic-teal);
+}
+
+.nav-links a::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--anthropic-teal);
+    transition: width 0.3s ease;
+}
+
+.nav-links a:hover::after {
+    width: 100%;
 }
 
 main {
@@ -89,12 +115,15 @@ main {
     margin: 2rem auto;
     padding: 2rem 0;
     min-height: calc(100vh - 200px);
+    flex: 1;
 }
 
 article h1 {
     color: var(--anthropic-teal);
     margin-bottom: 1rem;
     font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.2;
 }
 
 article h2 {
@@ -102,6 +131,7 @@ article h2 {
     margin-top: 2rem;
     margin-bottom: 1rem;
     font-size: 1.8rem;
+    font-weight: 600;
 }
 
 article h3 {
@@ -109,10 +139,13 @@ article h3 {
     margin-top: 1.5rem;
     margin-bottom: 0.75rem;
     font-size: 1.3rem;
+    font-weight: 600;
 }
 
 article p {
     margin-bottom: 1rem;
+    font-size: 1.1rem;
+    line-height: 1.7;
 }
 
 article ul {
@@ -122,49 +155,62 @@ article ul {
 
 article li {
     margin-bottom: 0.5rem;
+    line-height: 1.6;
 }
 
 article a {
     color: var(--anthropic-teal);
     text-decoration: none;
+    transition: all 0.2s;
 }
 
 article a:hover {
     color: var(--anthropic-purple);
     text-decoration: underline;
+    text-underline-offset: 4px;
 }
 
 pre {
-    background: var(--anthropic-blue-light);
+    background: var(--anthropic-blue-dark);
     color: var(--anthropic-white);
-    padding: 1rem;
-    border-radius: 4px;
+    padding: 1.5rem;
+    border-radius: 8px;
     overflow-x: auto;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     border: 1px solid rgba(0, 230, 194, 0.2);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 code {
     font-family: 'JetBrains Mono', 'Fira Code', SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 0.9rem;
+    background: var(--anthropic-blue-light);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
 }
 
 p code {
     background: var(--anthropic-blue-light);
     color: var(--anthropic-teal);
     padding: 0.2rem 0.4rem;
-    border-radius: 3px;
+    border-radius: 4px;
 }
 
 footer {
     background: var(--anthropic-blue-light);
     color: var(--anthropic-white);
-    padding: 2rem 0;
+    padding: 3rem 0 2rem;
     text-align: center;
+    border-top: 1px solid rgba(0, 230, 194, 0.1);
+    margin-top: auto;
 }
 
 footer a {
     color: var(--anthropic-teal);
+    text-decoration: none;
+    transition: color 0.2s;
 }
 
 footer a:hover {
@@ -174,32 +220,42 @@ footer a:hover {
 .home h1:first-of-type {
     font-size: 3rem;
     margin-bottom: 0.5rem;
+    font-weight: 800;
+    background: linear-gradient(to right, var(--anthropic-teal), var(--anthropic-purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
 
 /* React Components Styling */
 .platform-detector {
     background: var(--anthropic-blue-light);
     border: 1px solid rgba(0, 230, 194, 0.3);
-    border-radius: 8px;
-    padding: 1.5rem;
+    border-radius: 12px;
+    padding: 2rem;
     margin: 2rem 0;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .detected-platform h3 {
     margin-top: 0;
     color: var(--anthropic-teal);
+    font-size: 1.5rem;
+    font-weight: 600;
 }
 
 .platform-name {
     font-size: 1.2rem;
     color: var(--anthropic-purple);
+    font-weight: 500;
 }
 
 .platform-info code {
     background: var(--anthropic-blue-dark);
     color: var(--anthropic-teal);
     padding: 0.2rem 0.4rem;
-    border-radius: 3px;
+    border-radius: 4px;
+    font-size: 0.9rem;
 }
 
 .download-buttons {
@@ -208,37 +264,45 @@ footer a:hover {
 
 .download-buttons h3 {
     margin-bottom: 1rem;
+    font-size: 1.5rem;
+    color: var(--anthropic-teal);
 }
 
 .button-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
     margin: 1.5rem 0;
 }
 
 .download-button {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
+    gap: 1.25rem;
+    padding: 1.5rem;
     background: var(--anthropic-blue-light);
     border: 2px solid rgba(0, 230, 194, 0.3);
-    border-radius: 8px;
+    border-radius: 12px;
     text-decoration: none;
     color: var(--anthropic-white);
-    transition: all 0.2s;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 .download-button:hover {
     border-color: var(--anthropic-teal);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 230, 194, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 230, 194, 0.3);
     background: rgba(0, 230, 194, 0.1);
 }
 
 .button-icon {
-    font-size: 2rem;
+    font-size: 2.5rem;
+    min-width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .button-text {
@@ -246,21 +310,58 @@ footer a:hover {
 }
 
 .button-title {
-    font-weight: bold;
+    font-weight: 700;
     color: var(--anthropic-teal);
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
 }
 
 .button-subtitle {
-    font-size: 0.875rem;
+    font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 0.5rem;
 }
 
 .version-info {
     font-size: 0.875rem;
     color: rgba(255, 255, 255, 0.6);
     margin-top: 1rem;
+    font-weight: 500;
 }
 
+/* Button styles for consistency */
+.btn {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    background: var(--anthropic-blue-light);
+    color: var(--anthropic-teal);
+    border: 2px solid var(--anthropic-teal);
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    text-align: center;
+}
+
+.btn:hover {
+    background: rgba(0, 230, 194, 0.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 230, 194, 0.2);
+}
+
+.btn-primary {
+    background: var(--anthropic-teal);
+    color: var(--anthropic-blue);
+}
+
+.btn-primary:hover {
+    background: var(--anthropic-blue);
+    color: var(--anthropic-teal);
+    box-shadow: 0 4px 12px rgba(0, 230, 194, 0.3);
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
     nav .container {
         flex-direction: column;
@@ -269,6 +370,8 @@ footer a:hover {
 
     .nav-links {
         gap: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
     article h1 {
@@ -281,5 +384,20 @@ footer a:hover {
 
     .button-grid {
         grid-template-columns: 1fr;
+    }
+
+    .platform-detector {
+        padding: 1.5rem;
+    }
+    
+    .download-button {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .button-icon {
+        font-size: 2rem;
+        min-width: auto;
     }
 }
