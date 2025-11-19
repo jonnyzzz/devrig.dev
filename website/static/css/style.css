@@ -9,6 +9,8 @@
     --anthropic-gray-dark: #808080;
     --anthropic-gray-darker: #404040;
     --anthropic-gray-light: #2D3748;
+    --anthropic-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    --anthropic-transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 * {
@@ -18,13 +20,14 @@
 }
 
 body {
-    font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, Cantarell, 'Noto Sans', Arial, sans-serif;
     line-height: 1.6;
     color: var(--anthropic-white);
     background-color: var(--anthropic-blue);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    font-size: 16px;
 }
 
 .container {
@@ -34,13 +37,14 @@ body {
 }
 
 header {
-    background: var(--anthropic-blue-light);
+    background: rgba(0, 24, 32, 0.8);
     box-shadow: 0 2px 12px rgba(0, 230, 194, 0.15);
     position: sticky;
     top: 0;
     z-index: 100;
     backdrop-filter: blur(10px);
     border-bottom: 1px solid rgba(0, 230, 194, 0.1);
+    padding: 1rem 0;
 }
 
 nav {
@@ -61,18 +65,24 @@ nav .container {
     text-decoration: none;
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.75rem;
+    transition: var(--anthropic-transition);
+}
+
+.logo:hover {
+    transform: translateY(-2px);
 }
 
 .logo-image {
     height: 48px;
     width: 48px;
-    transition: transform 0.2s;
+    transition: var(--anthropic-transition);
     filter: drop-shadow(0 0 4px rgba(0, 230, 194, 0.3));
 }
 
 .logo:hover .logo-image {
     transform: scale(1.05);
+    filter: drop-shadow(0 0 8px rgba(0, 230, 194, 0.5));
 }
 
 .nav-links {
@@ -88,7 +98,8 @@ nav .container {
     font-weight: 500;
     position: relative;
     padding: 0.5rem 0;
-    transition: color 0.2s;
+    transition: var(--anthropic-transition);
+    font-size: 0.95rem;
 }
 
 .nav-links a:hover {
@@ -104,6 +115,7 @@ nav .container {
     height: 2px;
     background: var(--anthropic-teal);
     transition: width 0.3s ease;
+    border-radius: 2px;
 }
 
 .nav-links a:hover::after {
@@ -120,48 +132,54 @@ main {
 
 article h1 {
     color: var(--anthropic-teal);
-    margin-bottom: 1rem;
-    font-size: 2.5rem;
-    font-weight: 700;
+    margin-bottom: 1.5rem;
+    font-size: 2.8rem;
+    font-weight: 800;
     line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
 article h2 {
     color: var(--anthropic-purple);
-    margin-top: 2rem;
-    margin-bottom: 1rem;
-    font-size: 1.8rem;
-    font-weight: 600;
+    margin-top: 2.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1.3;
 }
 
 article h3 {
     color: var(--anthropic-white);
-    margin-top: 1.5rem;
-    margin-bottom: 0.75rem;
-    font-size: 1.3rem;
+    margin-top: 2rem;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
     font-weight: 600;
+    line-height: 1.4;
 }
 
 article p {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
     font-size: 1.1rem;
     line-height: 1.7;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 article ul {
     margin-left: 2rem;
-    margin-bottom: 1rem;
+    margin-bottom: 2rem;
 }
 
 article li {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
     line-height: 1.6;
+    font-size: 1.1rem;
 }
 
 article a {
     color: var(--anthropic-teal);
     text-decoration: none;
-    transition: all 0.2s;
+    transition: var(--anthropic-transition);
+    position: relative;
 }
 
 article a:hover {
@@ -170,17 +188,47 @@ article a:hover {
     text-underline-offset: 4px;
 }
 
+article a::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 1px;
+    background: var(--anthropic-teal);
+    transition: width 0.3s ease;
+}
+
+article a:hover::after {
+    width: 100%;
+}
+
 pre {
     background: var(--anthropic-blue-dark);
     color: var(--anthropic-white);
     padding: 1.5rem;
     border-radius: 8px;
     overflow-x: auto;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
     border: 1px solid rgba(0, 230, 194, 0.2);
     font-size: 0.9rem;
     line-height: 1.5;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--anthropic-shadow);
+    font-family: 'JetBrains Mono', 'Fira Code', SFMono-Regular, Menlo, Consolas, monospace;
+    position: relative;
+}
+
+pre::before {
+    content: 'Code';
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: rgba(0, 230, 194, 0.1);
+    color: var(--anthropic-teal);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
 }
 
 code {
@@ -189,6 +237,7 @@ code {
     background: var(--anthropic-blue-light);
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
+    color: var(--anthropic-teal);
 }
 
 p code {
@@ -210,7 +259,7 @@ footer {
 footer a {
     color: var(--anthropic-teal);
     text-decoration: none;
-    transition: color 0.2s;
+    transition: var(--anthropic-transition);
 }
 
 footer a:hover {
@@ -219,12 +268,15 @@ footer a:hover {
 
 .home h1:first-of-type {
     font-size: 3rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1.5rem;
     font-weight: 800;
     background: linear-gradient(to right, var(--anthropic-teal), var(--anthropic-purple));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    text-fill-color: transparent;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
 /* React Components Styling */
@@ -234,7 +286,13 @@ footer a:hover {
     border-radius: 12px;
     padding: 2rem;
     margin: 2rem 0;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--anthropic-shadow);
+    transition: var(--anthropic-transition);
+}
+
+.platform-detector:hover {
+    box-shadow: 0 8px 24px rgba(0, 230, 194, 0.2);
+    border-color: rgba(0, 230, 194, 0.5);
 }
 
 .detected-platform h3 {
@@ -242,12 +300,14 @@ footer a:hover {
     color: var(--anthropic-teal);
     font-size: 1.5rem;
     font-weight: 600;
+    margin-bottom: 1rem;
 }
 
 .platform-name {
     font-size: 1.2rem;
     color: var(--anthropic-purple);
     font-weight: 500;
+    margin-bottom: 0.5rem;
 }
 
 .platform-info code {
@@ -256,6 +316,7 @@ footer a:hover {
     padding: 0.2rem 0.4rem;
     border-radius: 4px;
     font-size: 0.9rem;
+    font-weight: 500;
 }
 
 .download-buttons {
@@ -263,46 +324,70 @@ footer a:hover {
 }
 
 .download-buttons h3 {
-    margin-bottom: 1rem;
-    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.8rem;
     color: var(--anthropic-teal);
+    font-weight: 700;
 }
 
 .button-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-    margin: 1.5rem 0;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin: 2rem 0;
 }
 
 .download-button {
     display: flex;
     align-items: center;
-    gap: 1.25rem;
-    padding: 1.5rem;
+    gap: 1.5rem;
+    padding: 1.75rem;
     background: var(--anthropic-blue-light);
     border: 2px solid rgba(0, 230, 194, 0.3);
     border-radius: 12px;
     text-decoration: none;
     color: var(--anthropic-white);
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: var(--anthropic-transition);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px);
+    position: relative;
+    overflow: hidden;
+}
+
+.download-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, transparent, rgba(0, 230, 194, 0.05), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.download-button:hover::before {
+    transform: translateX(100%);
 }
 
 .download-button:hover {
     border-color: var(--anthropic-teal);
     transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 230, 194, 0.3);
-    background: rgba(0, 230, 194, 0.1);
+    box-shadow: 0 12px 24px rgba(0, 230, 194, 0.3);
+    background: rgba(0, 230, 194, 0.05);
 }
 
 .button-icon {
     font-size: 2.5rem;
-    min-width: 50px;
+    min-width: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: var(--anthropic-transition);
+}
+
+.download-button:hover .button-icon {
+    transform: scale(1.1);
 }
 
 .button-text {
@@ -312,53 +397,79 @@ footer a:hover {
 .button-title {
     font-weight: 700;
     color: var(--anthropic-teal);
-    font-size: 1.25rem;
-    margin-bottom: 0.25rem;
+    font-size: 1.3rem;
+    margin-bottom: 0.5rem;
+    transition: var(--anthropic-transition);
+}
+
+.download-button:hover .button-title {
+    color: var(--anthropic-purple);
 }
 
 .button-subtitle {
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     color: rgba(255, 255, 255, 0.7);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    line-height: 1.5;
 }
 
 .version-info {
-    font-size: 0.875rem;
+    font-size: 0.9rem;
     color: rgba(255, 255, 255, 0.6);
     margin-top: 1rem;
     font-weight: 500;
+    transition: var(--anthropic-transition);
 }
 
 /* Button styles for consistency */
 .btn {
     display: inline-block;
-    padding: 0.75rem 1.5rem;
+    padding: 0.875rem 1.75rem;
     background: var(--anthropic-blue-light);
     color: var(--anthropic-teal);
     border: 2px solid var(--anthropic-teal);
     border-radius: 8px;
     text-decoration: none;
     font-weight: 600;
-    transition: all 0.3s ease;
+    transition: var(--anthropic-transition);
     cursor: pointer;
     text-align: center;
+    font-size: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .btn:hover {
     background: rgba(0, 230, 194, 0.1);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 230, 194, 0.2);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 230, 194, 0.2);
 }
 
 .btn-primary {
     background: var(--anthropic-teal);
     color: var(--anthropic-blue);
+    font-weight: 700;
 }
 
 .btn-primary:hover {
     background: var(--anthropic-blue);
     color: var(--anthropic-teal);
-    box-shadow: 0 4px 12px rgba(0, 230, 194, 0.3);
+    box-shadow: 0 8px 20px rgba(0, 230, 194, 0.3);
+}
+
+/* Card styling */
+.card {
+    background: var(--anthropic-blue-light);
+    border: 1px solid rgba(0, 230, 194, 0.15);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    transition: var(--anthropic-transition);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card:hover {
+    border-color: rgba(0, 230, 194, 0.3);
+    box-shadow: 0 8px 24px rgba(0, 230, 194, 0.15);
 }
 
 /* Responsive adjustments */
@@ -369,13 +480,13 @@ footer a:hover {
     }
 
     .nav-links {
-        gap: 1rem;
+        gap: 1.25rem;
         flex-wrap: wrap;
         justify-content: center;
     }
 
     article h1 {
-        font-size: 2rem;
+        font-size: 2.2rem;
     }
 
     .home h1:first-of-type {
@@ -393,11 +504,20 @@ footer a:hover {
     .download-button {
         flex-direction: column;
         text-align: center;
-        gap: 1rem;
+        gap: 1.25rem;
+        padding: 1.5rem;
     }
     
     .button-icon {
         font-size: 2rem;
         min-width: auto;
+    }
+    
+    .button-title {
+        font-size: 1.2rem;
+    }
+    
+    .button-subtitle {
+        font-size: 0.9rem;
     }
 }
