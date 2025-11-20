@@ -9,7 +9,8 @@
       "WebFetch(domain:windsurf.com)",
       "Bash(uv run:*)",
       "Bash(curl:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(7z l:*)"
     ],
     "deny": [],
     "ask": []
