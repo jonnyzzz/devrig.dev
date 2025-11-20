@@ -15,13 +15,15 @@ devrig is a universal command-line tool that automatically downloads, configures
 
 ⚠️ **Alpha/Proof of Concept** - This project is in early development.
 
-### Features
+### Key Highlights
 
 - **Universal Tool**: Works with IntelliJ, Cursor, VSCode, and other IDEs
 - **One Command Setup**: Get developers coding in minutes
 - **AI Agent Ready**: Perfect for AI coding agents needing consistent environments
 - **Isolated Environments**: Clean, reproducible development setups
 - **Multi-Platform**: Supports Windows, Linux, and macOS (x86-64 and ARM64)
+
+[Learn more about all features →](/features/)
 
 ### Problem it Solves
 
