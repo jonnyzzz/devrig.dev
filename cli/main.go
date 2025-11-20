@@ -12,6 +12,7 @@ import (
 	"jonnyzzz.com/devrig.dev/configservice"
 	"jonnyzzz.com/devrig.dev/feed"
 	initCmd "jonnyzzz.com/devrig.dev/init"
+	"jonnyzzz.com/devrig.dev/install"
 	"jonnyzzz.com/devrig.dev/unpack"
 	"jonnyzzz.com/devrig.dev/updates"
 )
@@ -22,6 +23,7 @@ func main() {
 	rootCmd := newRootCommand(updatesService)
 	rootCmd.AddCommand(NewVersionCommand())
 	rootCmd.AddCommand(initCmd.NewInitCommand(updatesService))
+	rootCmd.AddCommand(install.NewInstallCommand(VersionAndBuild()))
 
 	var devrigConfigPath string
 	// Add global --devrig-config flag

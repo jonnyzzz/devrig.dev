@@ -49,6 +49,33 @@ ide:
 
 The tool is compatible with [devcontainer](https://containers.dev/) to provide configurations.
 
+## Install Command
+
+The `devrig install` command allows you to install fonts and development tools that are commonly used in development environments.
+
+### Installing JetBrains Mono Font
+
+JetBrains Mono is a free and open-source typeface designed for developers. To install it on your system:
+
+```bash
+devrig install jetbrains-mono
+```
+
+This command will:
+- Download the latest version of JetBrains Mono from the official GitHub repository
+- Extract and install the font files to the appropriate system directory:
+  - **Windows**: `%WINDIR%\Fonts`
+  - **macOS**: `~/Library/Fonts`
+  - **Linux**: `~/.local/share/fonts/JetBrainsMono`
+
+The installer works on all supported platforms (Windows, Linux, macOS) and architectures (x86_64, ARM64).
+
+**Security Note:**
+- **TODO**: Add SHA-sum validation for downloaded fonts to ensure integrity and authenticity
+- Currently, the font is downloaded directly from the official JetBrains GitHub repository
+- JetBrains does not provide GPG signatures or checksums for font releases
+- Always ensure you're downloading from the official source: https://github.com/JetBrains/JetBrainsMono
+
 # Contribute
 
 We welcome contributions to the IDE Wrapper project! Here are some ways you can contribute:
