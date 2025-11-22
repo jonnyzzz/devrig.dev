@@ -70,11 +70,11 @@ This command will:
 
 The installer works on all supported platforms (Windows, Linux, macOS) and architectures (x86_64, ARM64).
 
-**Security Note:**
-- **TODO**: Add SHA-sum validation for downloaded fonts to ensure integrity and authenticity
-- Currently, the font is downloaded directly from the official JetBrains GitHub repository
-- JetBrains does not provide GPG signatures or checksums for font releases
-- Always ensure you're downloading from the official source: https://github.com/JetBrains/JetBrainsMono
+**Security:**
+- SHA-512 checksum validation ensures download integrity
+- Checksums are maintained in the devrig codebase as the source of truth
+- Downloads are verified against known-good checksums from official GitHub releases
+- All downloads occur over HTTPS from: https://github.com/JetBrains/JetBrainsMono
 
 # Contribute
 

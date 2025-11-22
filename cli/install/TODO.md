@@ -1,81 +1,59 @@
-# TODO: Security Enhancements for Install Command
+# Security Implementation for Install Command
 
-## SHA-sum Validation for Font Downloads
+## SHA-sum Validation for Font Downloads - IMPLEMENTED ✓
 
 ### Current Status
-The JetBrains Mono font installer currently downloads fonts directly from the official GitHub repository without cryptographic verification.
+The JetBrains Mono font installer now validates all downloads using SHA-512 checksums maintained in the devrig codebase.
 
-### Problem
-Without checksum validation, there is a potential security risk:
-- Man-in-the-middle attacks could substitute malicious files
-- Corrupted downloads might not be detected
-- No guarantee of file integrity and authenticity
+### Implementation Details
 
-### Research Findings
-Based on investigation of the JetBrains Mono GitHub repository:
-- **No GPG/PGP signatures** are provided by JetBrains for font releases
-- **No SHA-256/SHA-512 checksums** are published alongside releases
-- The font is released under the SIL Open Font License 1.1 (OFL-1.1)
+#### Solution: Maintain Checksums in Devrig Repository (Implemented)
 
-### Proposed Solutions
+We maintain verified SHA-512 checksums in `cli/install/checksums.go` as the source of truth:
 
-#### Option 1: Maintain Our Own Checksums (Recommended)
-1. Create a checksums file in our repository with verified hashes
-2. Update this file with each new JetBrains Mono release
-3. Validate downloaded files against our checksums before installation
+**How it works:**
+1. Known-good checksums are stored in `KnownChecksums` map
+2. Downloads are verified against these checksums before installation
+3. Checksums are calculated from official GitHub releases
+4. If a version is not in the known checksums, a warning is shown but installation continues
 
-**Implementation Steps:**
-- [ ] Create `cli/install/checksums/jetbrains-mono.json` with structure:
-  ```json
-  {
-    "versions": {
-      "v2.304": {
-        "zip_sha512": "abc123...",
-        "release_url": "https://github.com/JetBrains/JetBrainsMono/releases/tag/v2.304"
-      }
-    }
-  }
-  ```
-- [ ] Add function `validateDownloadChecksum(filePath, expectedHash string) error`
-- [ ] Integrate validation into download process
-- [ ] Add CI workflow to alert when new JetBrains Mono version is released
+**Files:**
+- `cli/install/checksums.go` - Contains checksum database
+- `cli/install/jetbrains_mono.go` - Verification logic in `verifyChecksum()` method
 
-#### Option 2: Content-Based Validation
-- Validate the ZIP archive structure
-- Verify expected font files are present
-- Check font file headers for TTF format markers
+**Verification Process:**
+1. Download font archive from GitHub
+2. Calculate SHA-512 of downloaded file
+3. Compare against known checksum
+4. Fail installation if mismatch detected
+5. Warn if version is not in known checksums
 
-#### Option 3: Request JetBrains to Provide Checksums
-- Open an issue/PR on JetBrains/JetBrainsMono repository
-- Request official checksums or signatures for releases
-- This would benefit the entire community
+**Updating Checksums:**
+When a new JetBrains Mono version is released:
+1. Download from: https://github.com/JetBrains/JetBrainsMono/releases
+2. Calculate SHA-512: `sha512sum JetBrainsMono-*.zip`
+3. Update `KnownChecksums` map in `checksums.go`
 
-### Code Locations
-The following locations need updates for SHA-sum validation:
+### Why This Approach?
 
-1. **`cli/install/jetbrains_mono.go:31-34`**
-   ```go
-   // TODO: Validate SHA-sum of the downloaded font
-   // Issue: Add checksum validation for downloaded fonts
-   // Reference: https://github.com/jonnyzzz/devrig.dev/issues/TBD
-   ```
+**JetBrains doesn't provide:**
+- GPG/PGP signatures for font releases
+- Official SHA-256/SHA-512 checksums alongside releases
 
-2. **`cli/install/jetbrains_mono.go:126-129`**
-   ```go
-   // TODO: Validate SHA-sum after download
-   // Issue: Add checksum validation for downloaded font archive
-   // Reference: https://github.com/jonnyzzz/devrig.dev/issues/TBD
-   ```
+**Our solution:**
+- Uses GitHub as the source of truth
+- Maintains our own verified checksums
+- Provides integrity verification without waiting for upstream changes
+- Allows installation of newer versions with a warning
 
-### Testing Requirements
-Once implemented, we need tests for:
-- [ ] Valid checksum passes validation
-- [ ] Invalid checksum fails validation
-- [ ] Missing checksum file is handled gracefully
-- [ ] Corrupted download is detected
+### Testing Coverage
 
-### Priority
-**Medium** - While important for security, the current implementation downloads from the official GitHub repository over HTTPS, which provides some level of security.
+Implemented tests verify:
+- ✓ Checksum calculation works correctly
+- ✓ Valid checksums pass verification
+- ✓ Invalid checksums fail verification
+- ✓ Missing checksums show warning but don't fail
+- ✓ Corrupted downloads are detected
 
 ### References
 - JetBrains Mono Repository: https://github.com/JetBrains/JetBrainsMono

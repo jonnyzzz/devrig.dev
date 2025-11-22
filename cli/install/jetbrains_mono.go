@@ -2,6 +2,8 @@ package install
 
 import (
 	"archive/zip"
+	"crypto/sha512"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,10 +42,6 @@ type GitHubRelease struct {
 
 // NewJetBrainsMonoInstaller creates a new JetBrains Mono installer
 func NewJetBrainsMonoInstaller(devrigVersion string) (*JetBrainsMonoInstaller, error) {
-	// TODO: Validate SHA-sum of the downloaded font
-	// Issue: Add checksum validation for downloaded fonts
-	// Reference: https://github.com/jonnyzzz/devrig.dev/issues/TBD
-
 	installer := &JetBrainsMonoInstaller{
 		devrigVersion: devrigVersion,
 		userAgent:     fmt.Sprintf("devrig/%s", devrigVersion),
@@ -118,6 +116,12 @@ func (j *JetBrainsMonoInstaller) Install(cmd *cobra.Command) error {
 		return fmt.Errorf("failed to download font: %w", err)
 	}
 
+	// Verify checksum using GitHub as source of truth
+	cmd.Println("Verifying download integrity...")
+	if err := j.verifyChecksum(zipPath); err != nil {
+		return fmt.Errorf("checksum verification failed: %w", err)
+	}
+
 	cmd.Println("Extracting fonts...")
 
 	// Extract fonts
@@ -138,10 +142,6 @@ func (j *JetBrainsMonoInstaller) Install(cmd *cobra.Command) error {
 
 // downloadFile downloads a file from URL to destPath
 func (j *JetBrainsMonoInstaller) downloadFile(destPath string) error {
-	// TODO: Validate SHA-sum after download
-	// Issue: Add checksum validation for downloaded font archive
-	// Reference: https://github.com/jonnyzzz/devrig.dev/issues/TBD
-
 	req, err := http.NewRequest("GET", j.downloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -361,6 +361,45 @@ func copyFile(src, dst string) error {
 
 	_, err = io.Copy(destFile, sourceFile)
 	return err
+}
+
+// verifyChecksum verifies the SHA-512 checksum of the downloaded file against known-good checksums
+func (j *JetBrainsMonoInstaller) verifyChecksum(filePath string) error {
+	// Get known checksum for this version
+	knownChecksum := GetKnownChecksum(j.fontVersion)
+	if knownChecksum == "" {
+		// If we don't have a known checksum for this version, warn but don't fail
+		// This allows installation of newer versions before we update the checksums
+		fmt.Printf("Warning: No known checksum for version %s. Skipping verification.\n", j.fontVersion)
+		fmt.Println("Please report this at: https://github.com/jonnyzzz/devrig.dev/issues")
+		return nil
+	}
+
+	// Calculate SHA-512 of the downloaded file
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open file for checksum: %w", err)
+	}
+	defer file.Close()
+
+	hash := sha512.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return fmt.Errorf("failed to calculate checksum: %w", err)
+	}
+
+	calculatedChecksum := hex.EncodeToString(hash.Sum(nil))
+
+	// Compare checksums
+	if calculatedChecksum != knownChecksum {
+		return fmt.Errorf(
+			"checksum mismatch for version %s:\n  expected: %s\n  got:      %s\n\nThis could indicate a corrupted download or a security issue.\nPlease report this at: https://github.com/jonnyzzz/devrig.dev/issues",
+			j.fontVersion,
+			knownChecksum,
+			calculatedChecksum,
+		)
+	}
+
+	return nil
 }
 
 // refreshFontCacheLinux refreshes the font cache on Linux
