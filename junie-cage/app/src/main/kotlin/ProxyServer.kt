@@ -3,27 +3,39 @@ package org.jonnyzzz.ai.app
 import io.ktor.client.*
 import io.ktor.client.engine.cio.CIO as ClientCIO
 import io.ktor.client.plugins.*
+import io.ktor.client.plugins.websocket.WebSockets as ClientWebSockets
+import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.cio.CIO as ServerCIO
 import io.ktor.server.engine.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.ktor.server.websocket.*
 import io.ktor.utils.io.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import io.ktor.websocket.*
+import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
+/**
+ * Reverse Proxy Server with support for HTTP, WebSocket, and SSE
+ *
+ * This implementation uses Ktor's native features and follows official patterns from:
+ * - https://github.com/ktorio/ktor-samples/tree/main/reverse-proxy
+ * - https://github.com/ktorio/ktor-samples/tree/main/reverse-proxy-ws
+ */
 class ProxyServer {
     private var server: EmbeddedServer<*, *>? = null
     private val client = HttpClient(ClientCIO) {
         expectSuccess = false
+
+        // Install WebSocket support for client
+        install(ClientWebSockets)
 
         // Configure timeout using Ktor's HttpTimeout plugin
         install(HttpTimeout) {
@@ -36,10 +48,24 @@ class ProxyServer {
 
     fun start() {
         server = embeddedServer(ServerCIO, port = Config.PROXY_LISTEN_PORT, host = "127.0.0.1") {
-            // Use Ktor's native intercept pattern for proxying
-            // This intercepts all requests before routing, which is more efficient than routing
+            // Install WebSocket support for server
+            install(WebSockets)
+
+            // Use routing to handle WebSocket and regular HTTP requests
+            routing {
+                // WebSocket proxy - catches all WebSocket upgrade requests
+                webSocket("{...}") {
+                    proxyWebSocketSession(call)
+                }
+            }
+
+            // Use Ktor's native intercept pattern for regular HTTP/SSE proxying
+            // This intercepts all non-WebSocket requests at the pipeline level
             intercept(ApplicationCallPipeline.Call) {
-                proxyRequest(call)
+                // Only proxy if not handled by routing (i.e., not WebSocket)
+                if (call.request.header(HttpHeaders.Upgrade)?.lowercase() != "websocket") {
+                    proxyHttpRequest(call)
+                }
             }
         }
 
@@ -47,10 +73,15 @@ class ProxyServer {
             server?.start(wait = false)
             log("Proxy server started on http://127.0.0.1:${Config.PROXY_LISTEN_PORT}")
             log("Forwarding to http://${Config.TARGET_HOST}:${Config.TARGET_PORT}")
+            log("Supports: HTTP, WebSocket (WS), Server-Sent Events (SSE)")
         }
     }
 
-    private suspend fun proxyRequest(call: ApplicationCall) {
+    /**
+     * Proxy HTTP requests including SSE streaming
+     * Uses Ktor's native channel-based streaming for efficient forwarding
+     */
+    private suspend fun proxyHttpRequest(call: ApplicationCall) {
         val targetUrl = "http://${Config.TARGET_HOST}:${Config.TARGET_PORT}${call.request.uri}"
         val startTime = System.currentTimeMillis()
 
@@ -113,21 +144,78 @@ class ProxyServer {
             }
 
             // Stream response body using Ktor's native channel-based response
+            // This is critical for SSE (Server-Sent Events) streaming from OpenAI-compatible APIs
             val responseBody = response.bodyAsChannel()
             call.respondBytesWriter(
                 contentType = response.contentType(),
                 status = response.status
             ) {
+                // Use Ktor's native copyTo for efficient streaming
                 responseBody.copyTo(this)
             }
 
             // Log response
-            log("${call.request.httpMethod.value} ${call.request.uri} -> ${response.status.value} (${duration}ms)")
+            val contentType = response.contentType()?.toString() ?: "unknown"
+            log("${call.request.httpMethod.value} ${call.request.uri} -> ${response.status.value} ($contentType, ${duration}ms)")
 
         } catch (e: Exception) {
             val duration = System.currentTimeMillis() - startTime
             log("ERROR: ${call.request.httpMethod.value} ${call.request.uri} -> ${e.message} (${duration}ms)")
             call.respondText("Proxy error: ${e.message}", status = HttpStatusCode.BadGateway)
+        }
+    }
+
+    /**
+     * Proxy WebSocket connections
+     * Creates a bidirectional tunnel between client and target server
+     * Called from within a webSocket routing block
+     */
+    private suspend fun DefaultWebSocketServerSession.proxyWebSocketSession(call: ApplicationCall) {
+        val targetUrl = "ws://${Config.TARGET_HOST}:${Config.TARGET_PORT}${call.request.uri}"
+        log("WS: ${call.request.uri} -> $targetUrl")
+
+        try {
+            // This is the server-side WebSocket session (client connection)
+            val serverSession = this
+
+            // Connect to target WebSocket
+            client.webSocket(
+                host = Config.TARGET_HOST,
+                port = Config.TARGET_PORT,
+                path = call.request.uri
+            ) {
+                // This is the client-side WebSocket session (target connection)
+                val clientSession = this
+
+                // Create two concurrent jobs for bidirectional proxying
+                coroutineScope {
+                    // Forward messages from client to target
+                    launch {
+                        try {
+                            for (frame in serverSession.incoming) {
+                                clientSession.send(frame.copy())
+                            }
+                        } catch (e: Exception) {
+                            log("WS client->target error: ${e.message}")
+                        }
+                    }
+
+                    // Forward messages from target to client
+                    launch {
+                        try {
+                            for (frame in clientSession.incoming) {
+                                serverSession.send(frame.copy())
+                            }
+                        } catch (e: Exception) {
+                            log("WS target->client error: ${e.message}")
+                        }
+                    }
+                }
+            }
+
+            log("WS: ${call.request.uri} closed")
+        } catch (e: Exception) {
+            log("WS ERROR: ${call.request.uri} -> ${e.message}")
         }
     }
 
@@ -142,18 +230,21 @@ class ProxyServer {
                 val json = Json.parseToJsonElement(bodyText).jsonObject
                 val messages = json["messages"]?.jsonArray
                 val prompt = json["prompt"]?.jsonPrimitive?.content
+                val stream = json["stream"]?.jsonPrimitive?.boolean ?: false
+
+                val streamIndicator = if (stream) " [SSE]" else ""
 
                 if (messages != null) {
                     val lastMessage = messages.lastOrNull()?.jsonObject
                     val content = lastMessage?.get("content")?.jsonPrimitive?.content
                     if (content != null) {
                         val preview = if (content.length > 100) content.take(100) + "..." else content
-                        log("$method $uri [prompt: $preview]")
+                        log("$method $uri$streamIndicator [prompt: $preview]")
                         return
                     }
                 } else if (prompt != null) {
                     val preview = if (prompt.length > 100) prompt.take(100) + "..." else prompt
-                    log("$method $uri [prompt: $preview]")
+                    log("$method $uri$streamIndicator [prompt: $preview]")
                     return
                 }
             } catch (e: Exception) {
