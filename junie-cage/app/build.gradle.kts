@@ -2,6 +2,7 @@ plugins {
     // Kotlin and Compose for Desktop
     kotlin("jvm") version "2.2.21"
     kotlin("plugin.compose") version "2.2.21"
+    kotlin("plugin.serialization") version "2.2.21"
     id("org.jetbrains.compose") version "1.9.3"
     application
 }
@@ -14,6 +15,26 @@ repositories {
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
+
+    // Ktor Server
+    val ktorVersion = "3.3.2"
+    implementation("io.ktor:ktor-server-core:$ktorVersion")
+    implementation("io.ktor:ktor-server-cio:$ktorVersion")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+
+    // Ktor Client
+    implementation("io.ktor:ktor-client-core:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio:$ktorVersion")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
+
+    // Logging
+    implementation("ch.qos.logback:logback-classic:1.5.16")
+
+    // Serialization
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+    // Coroutines for Desktop/Swing
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.10.1")
 }
 
 kotlin {
