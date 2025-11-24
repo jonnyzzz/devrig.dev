@@ -2,15 +2,16 @@ package org.jonnyzzz.ai.app
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.CIO as ClientCIO
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.server.application.*
 import io.ktor.server.cio.CIO as ServerCIO
 import io.ktor.server.engine.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
-import io.ktor.server.routing.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,20 +24,22 @@ class ProxyServer {
     private var server: EmbeddedServer<*, *>? = null
     private val client = HttpClient(ClientCIO) {
         expectSuccess = false
-        engine {
-            requestTimeout = 600_000 // 10 minutes for slow Ollama responses
+
+        // Configure timeout using Ktor's HttpTimeout plugin
+        install(HttpTimeout) {
+            requestTimeoutMillis = 600_000 // 10 minutes for slow Ollama responses
+            connectTimeoutMillis = 10_000  // 10 seconds to establish connection
+            socketTimeoutMillis = 600_000  // 10 minutes for socket operations
         }
     }
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
 
     fun start() {
         server = embeddedServer(ServerCIO, port = Config.PROXY_LISTEN_PORT, host = "127.0.0.1") {
-            routing {
-                route("{...}") {
-                    handle {
-                        proxyRequest(call)
-                    }
-                }
+            // Use Ktor's native intercept pattern for proxying
+            // This intercepts all requests before routing, which is more efficient than routing
+            intercept(ApplicationCallPipeline.Call) {
+                proxyRequest(call)
             }
         }
 
@@ -52,7 +55,7 @@ class ProxyServer {
         val startTime = System.currentTimeMillis()
 
         try {
-            // Read body once for logging and proxying
+            // Read body for logging (if present)
             val bodyBytes = if (call.request.httpMethod in listOf(HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch)) {
                 call.receiveChannel().toByteArray()
             } else {
@@ -62,41 +65,61 @@ class ProxyServer {
             // Log request with prompt preview for OpenAI API
             logRequest(call, bodyBytes)
 
+            // Use Ktor's native request building with proper header and body handling
             val response: HttpResponse = client.request(targetUrl) {
                 method = call.request.httpMethod
 
-                // Copy headers
-                call.request.headers.forEach { name, values ->
-                    if (!name.equals("Host", ignoreCase = true)) {
-                        values.forEach { value ->
-                            header(name, value)
+                // Copy headers using Ktor's native header handling (excluding hop-by-hop headers)
+                headers {
+                    call.request.headers.forEach { name, values ->
+                        // Exclude hop-by-hop headers as per RFC 2616
+                        if (!name.equals(HttpHeaders.Host, ignoreCase = true) &&
+                            !name.equals(HttpHeaders.Connection, ignoreCase = true) &&
+                            !name.equals("Keep-Alive", ignoreCase = true) &&
+                            !name.equals(HttpHeaders.TransferEncoding, ignoreCase = true) &&
+                            !name.equals(HttpHeaders.Upgrade, ignoreCase = true) &&
+                            !name.equals("Proxy-Authenticate", ignoreCase = true) &&
+                            !name.equals("Proxy-Authorization", ignoreCase = true) &&
+                            !name.equals("TE", ignoreCase = true) &&
+                            !name.equals("Trailers", ignoreCase = true)) {
+                            appendAll(name, values)
                         }
                     }
                 }
 
-                // Copy body if present
+                // Set body using native Ktor content
                 if (bodyBytes != null) {
                     setBody(bodyBytes)
+                    contentType(call.request.contentType())
                 }
             }
 
             val duration = System.currentTimeMillis() - startTime
 
-            // Copy response status
-            call.response.status(response.status)
-
-            // Copy response headers
+            // Copy response headers using Ktor's native header handling, excluding hop-by-hop headers
             response.headers.forEach { name, values ->
-                if (!name.equals("Transfer-Encoding", ignoreCase = true)) {
+                if (!name.equals(HttpHeaders.TransferEncoding, ignoreCase = true) &&
+                    !name.equals(HttpHeaders.Connection, ignoreCase = true) &&
+                    !name.equals("Keep-Alive", ignoreCase = true) &&
+                    !name.equals(HttpHeaders.Upgrade, ignoreCase = true) &&
+                    !name.equals("Proxy-Authenticate", ignoreCase = true) &&
+                    !name.equals("Proxy-Authorization", ignoreCase = true) &&
+                    !name.equals("TE", ignoreCase = true) &&
+                    !name.equals("Trailers", ignoreCase = true)) {
                     values.forEach { value ->
                         call.response.header(name, value)
                     }
                 }
             }
 
-            // Copy response body
-            val responseBytes = response.readRawBytes()
-            call.respondBytes(responseBytes)
+            // Stream response body using Ktor's native channel-based response
+            val responseBody = response.bodyAsChannel()
+            call.respondBytesWriter(
+                contentType = response.contentType(),
+                status = response.status
+            ) {
+                responseBody.copyTo(this)
+            }
 
             // Log response
             log("${call.request.httpMethod.value} ${call.request.uri} -> ${response.status.value} (${duration}ms)")
