@@ -14,5 +14,5 @@ object Config {
     val HEALTH_CHECK_URL: String
         get() = "$TARGET_BASE_URL/api/tags"
 
-    const val HEALTH_CHECK_INTERVAL_MS = 500L
+    const val HEALTH_CHECK_INTERVAL_MS = 100L
 }

@@ -1,23 +1,28 @@
 package org.jonnyzzz.ai.app
 
 import io.ktor.client.*
-import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.okhttp.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import kotlinx.coroutines.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import kotlin.time.Duration.Companion.milliseconds
 
 class PingServer(
-    private val healthCheckUrl: String = Config.HEALTH_CHECK_URL,
-    private val checkIntervalMs: Long = Config.HEALTH_CHECK_INTERVAL_MS,
     private val onServerDetected: () -> Unit
 ) {
-    private val client = HttpClient(CIO) {
-        expectSuccess = false
+    private val client = HttpClient(OkHttp) {
         engine {
-            requestTimeout = Config.HEALTH_CHECK_INTERVAL_MS/2
+            config {
+                followRedirects(true)
+                readTimeout(200.milliseconds)
+                connectTimeout(100.milliseconds)
+                writeTimeout(100.milliseconds)
+                callTimeout(150.milliseconds)
+            }
         }
+        expectSuccess = false
     }
 
     private var job: Job? = null
@@ -26,21 +31,21 @@ class PingServer(
 
     fun start() {
         job = CoroutineScope(Dispatchers.IO + CoroutineName("Ping")).launch {
-            log("Health check started for $healthCheckUrl")
+            log("Health check started for ${Config.HEALTH_CHECK_URL}")
             while (isActive) {
                 checkHealth()
-                delay(checkIntervalMs)
+                delay(Config.HEALTH_CHECK_INTERVAL_MS)
             }
         }
     }
 
     private suspend fun checkHealth() {
         try {
-            val response: HttpResponse = client.get(healthCheckUrl)
+            val response: HttpResponse = client.get(Config.HEALTH_CHECK_URL)
 
             if (response.status.value in 200..299) {
                 if (!wasOnline) {
-                    log("Target server DETECTED at $healthCheckUrl")
+                    log("Target server DETECTED at ${Config.HEALTH_CHECK_URL}")
                     wasOnline = true
                     // Notify that server is back online
                     withContext(Dispatchers.Main) {
@@ -57,7 +62,7 @@ class PingServer(
 
     private fun handleOffline(reason: String) {
         if (wasOnline) {
-            log("Target server LOST at $healthCheckUrl: $reason")
+            log("Target server LOST at ${Config.HEALTH_CHECK_URL}: $reason")
             wasOnline = false
         }
     }
