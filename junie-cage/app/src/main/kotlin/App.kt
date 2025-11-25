@@ -7,6 +7,11 @@ fun main() = application {
     // State to track whether to show dialog
     var showDialog by remember { mutableStateOf(false) }
 
+    // Request macOS Local Network permission early (no-op on other OSes)
+    LaunchedEffect(Unit) {
+        LocalNetworkPermission.requestOnce()
+    }
+
     // Start proxy server
     val proxyServer = remember {
         ProxyServer().apply { start() }
@@ -27,6 +32,7 @@ fun main() = application {
         onCloseRequest = {
             proxyServer.stop()
             pingServer.stop()
+            LocalNetworkPermission.stop()
             exitApplication()
         }
     ) {

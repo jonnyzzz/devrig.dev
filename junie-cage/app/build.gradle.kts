@@ -4,7 +4,6 @@ plugins {
     kotlin("plugin.compose") version "2.2.21"
     kotlin("plugin.serialization") version "2.2.21"
     id("org.jetbrains.compose") version "1.9.3"
-    application
 }
 
 repositories {
@@ -16,6 +15,9 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.material3)
     implementation("io.ktor:ktor-client-okhttp-jvm:3.3.2")
+
+    // Bonjour/mDNS for triggering macOS Local Network permission prompt
+    implementation("org.jmdns:jmdns:3.5.10")
 
     // Ktor Server
     val ktorVersion = "3.3.2"
@@ -57,7 +59,20 @@ kotlin {
     jvmToolchain(21)
 }
 
-application {
-    // Define the Fully Qualified Name for the application main class
-    mainClass = "org.jonnyzzz.ai.app.AppKt"
+// Compose Desktop native packaging (needed to add macOS Info.plist keys)
+compose.desktop {
+    application {
+        mainClass = "org.jonnyzzz.ai.app.AppKt"
+
+        nativeDistributions {
+            targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg)
+            macOS {
+                // Use a dedicated Info.plist file to include Local Network keys
+                infoPlist {
+                    file("src/macos/Info.plist")
+                }
+                // Note: No special entitlements are required for Bonjour browsing on macOS.
+            }
+        }
+    }
 }

@@ -16,10 +16,10 @@ class PingServer(
         engine {
             config {
                 followRedirects(true)
-                readTimeout(200.milliseconds)
-                connectTimeout(100.milliseconds)
-                writeTimeout(100.milliseconds)
-                callTimeout(150.milliseconds)
+                readTimeout(50.milliseconds)
+                connectTimeout(50.milliseconds)
+                writeTimeout(50.milliseconds)
+                callTimeout(50.milliseconds)
             }
         }
         expectSuccess = false
