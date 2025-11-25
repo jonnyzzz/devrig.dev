@@ -1,10 +1,18 @@
 package org.jonnyzzz.ai.app
 
 object Config {
-    const val PROXY_LISTEN_PORT = 1984
-    const val TARGET_HOST = "localhost"
-    const val TARGET_PORT = 11434
-    const val TARGET_BASE_URL = "http://$TARGET_HOST:$TARGET_PORT"
-    const val HEALTH_CHECK_URL = "$TARGET_BASE_URL/api/tags"
+    // Allow overriding for tests via system properties
+    val PROXY_LISTEN_PORT: Int
+        get() = System.getProperty("test.proxy.port")?.toIntOrNull() ?: 1984
+
+    val TARGET_BASE_URL: String
+        get() = System.getProperty("test.target.url") ?: "http://10.212.212.1:11434"
+
+    // Helper functions to construct URLs
+    fun buildHttpUrl(path: String): String = "$TARGET_BASE_URL$path"
+
+    val HEALTH_CHECK_URL: String
+        get() = "$TARGET_BASE_URL/api/tags"
+
     const val HEALTH_CHECK_INTERVAL_MS = 500L
 }
