@@ -191,13 +191,20 @@ fun ApplicationScope.NotificationWindow(
     content: @Composable BoxScope.() -> Unit
 ) {
     val screenSize = Toolkit.getDefaultToolkit().screenSize
-    val windowWidth = 800.dp
-    val xPos = (screenSize.width * 0.75 - windowWidth.value / 2).toInt()
-    val yPos = (screenSize.height * 0.75 - 300).toInt()
+    val windowWidth = 800
+    val windowHeight = 600
+
+    // Preferred position (lower-right area)
+    val preferredX = (screenSize.width * 0.75 - windowWidth / 2).toInt()
+    val preferredY = (screenSize.height * 0.75 - 300).toInt()
+
+    // Clamp to ensure window stays fully on screen
+    val xPos = preferredX.coerceIn(0, (screenSize.width - windowWidth - 5).coerceAtLeast(0))
+    val yPos = preferredY.coerceIn(0, (screenSize.height - windowHeight - 5).coerceAtLeast(0))
 
     val windowState = rememberWindowState(
         position = WindowPosition(xPos.dp, yPos.dp),
-        size = DpSize(windowWidth, 600.dp)
+        size = DpSize(windowWidth.dp, windowHeight.dp)
     )
 
     Window(
