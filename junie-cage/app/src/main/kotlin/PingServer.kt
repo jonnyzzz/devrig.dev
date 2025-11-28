@@ -31,38 +31,36 @@ class PingServer(
 
     fun start() {
         job = CoroutineScope(Dispatchers.IO + CoroutineName("Ping")).launch {
-            log("Health check started for ${Config.HEALTH_CHECK_URL}")
+            val backends = Config.MODEL_BACKENDS.map { it.backendUrl }.distinct()
+            log("Health check started for backends: $backends")
             while (isActive) {
-                checkHealth()
+                checkHealth(backends)
                 delay(Config.HEALTH_CHECK_INTERVAL_MS)
             }
         }
     }
 
-    private suspend fun checkHealth() {
-        try {
-            val response: HttpResponse = client.get(Config.HEALTH_CHECK_URL)
-
-            if (response.status.value in 200..299) {
-                if (!wasOnline) {
-                    log("Target server DETECTED at ${Config.HEALTH_CHECK_URL}")
-                    wasOnline = true
-                    // Notify that server is back online
-                    withContext(Dispatchers.Main) {
-                        onServerDetected()
-                    }
+    private suspend fun checkHealth(backends: List<String>) {
+        var anyOnline = false
+        for (backend in backends) {
+            try {
+                val response: HttpResponse = client.get("$backend/models")
+                if (response.status.value in 200..299) {
+                    anyOnline = true
                 }
-            } else {
-                handleOffline("returned status ${response.status.value}")
+            } catch (_: Exception) {
+                // Backend offline
             }
-        } catch (e: Exception) {
-            handleOffline(e.message ?: "unknown error")
         }
-    }
 
-    private fun handleOffline(reason: String) {
-        if (wasOnline) {
-            log("Target server LOST at ${Config.HEALTH_CHECK_URL}: $reason")
+        if (anyOnline && !wasOnline) {
+            log("Backend(s) DETECTED")
+            wasOnline = true
+            withContext(Dispatchers.Main) {
+                onServerDetected()
+            }
+        } else if (!anyOnline && wasOnline) {
+            log("All backends LOST")
             wasOnline = false
         }
     }

@@ -2,29 +2,23 @@ package org.jonnyzzz.ai.app
 
 import io.ktor.client.*
 import io.ktor.client.plugins.*
-import io.ktor.client.plugins.websocket.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.http.Url
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import io.ktor.server.websocket.*
-import io.ktor.server.websocket.WebSockets
 import io.ktor.utils.io.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.*
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import io.ktor.client.engine.cio.CIO as ClientCIO
-import io.ktor.client.plugins.websocket.WebSockets as ClientWebSockets
 
 fun main() {
     ProxyServer().start()
@@ -43,38 +37,68 @@ class ProxyServer {
     private var server: EmbeddedServer<*, *>? = null
     private val client = HttpClient(ClientCIO) {
         expectSuccess = false
-
-        // Install WebSocket support for client
-        install(ClientWebSockets)
-
-        // Configure timeout using Ktor's HttpTimeout plugin
         install(HttpTimeout) {
-            requestTimeoutMillis = 600_000 // 10 minutes for slow Ollama responses
-            connectTimeoutMillis = 10_000  // 10 seconds to establish connection
-            socketTimeoutMillis = 600_000  // 10 minutes for socket operations
+            requestTimeoutMillis = 600_000
+            connectTimeoutMillis = 10_000
+            socketTimeoutMillis = 600_000
         }
     }
     private val timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS")
 
     fun start() {
         server = embeddedServer(Netty, port = Config.PROXY_LISTEN_PORT, host = "127.0.0.1") {
-            // Install WebSocket support for server
-            install(WebSockets)
-
-            // Use routing to handle WebSocket and regular HTTP requests
             routing {
-                // WebSocket proxy - catches all WebSocket upgrade requests
-                webSocket("{...}") {
-                    proxyWebSocketSession(call)
+                // Intercept /api/tags to return our model list (Ollama format)
+                get("/api/tags") {
+                    val models = Config.MODEL_BACKENDS.map { model ->
+                        buildJsonObject {
+                            put("name", model.name)
+                            put("model", model.name)
+                            put("modified_at", "2024-01-01T00:00:00Z")
+                            put("size", 0L)
+                        }
+                    }
+                    val response = buildJsonObject {
+                        put("models", JsonArray(models))
+                    }
+                    call.respondText(response.toString(), ContentType.Application.Json)
+                }
+
+                // Intercept /v1/models and /models to return our model list (OpenAI format)
+                get("/v1/models") { respondModelsOpenAI(call) }
+                get("/models") { respondModelsOpenAI(call) }
+
+                // Diagnostic endpoint to check backend connectivity
+                get("/debug/backends") {
+                    val results = Config.MODEL_BACKENDS.map { backend ->
+                        val baseUrl = backend.backendUrl.removeSuffix("/v1").removeSuffix("/")
+                        val targetUrl = "$baseUrl/v1/responses"
+                        val status = try {
+                            val response = client.get(targetUrl)
+                            "reachable (${response.status})"
+                        } catch (e: Exception) {
+                            "ERROR: ${e::class.simpleName}: ${e.message}"
+                        }
+                        buildJsonObject {
+                            put("model", backend.name)
+                            put("backendUrl", backend.backendUrl)
+                            put("targetUrl", targetUrl)
+                            put("useResponsesApi", backend.useResponsesApi)
+                            put("status", status)
+                        }
+                    }
+                    val response = buildJsonObject {
+                        put("backends", JsonArray(results))
+                    }
+                    call.respondText(response.toString(), ContentType.Application.Json)
                 }
             }
 
-            // Use Ktor's native intercept pattern for regular HTTP/SSE proxying
-            // This intercepts all non-WebSocket requests at the pipeline level
+            // Handle chat/completions endpoints
             intercept(ApplicationCallPipeline.Call) {
-                // Only proxy if not handled by routing (i.e., not WebSocket)
-                if (call.request.header(HttpHeaders.Upgrade)?.lowercase() != "websocket") {
-                    proxyHttpRequest(call)
+                val handledRoutes = setOf("/api/tags", "/v1/models", "/models", "/debug/backends")
+                if (call.request.uri !in handledRoutes) {
+                    proxyChatCompletions(call)
                 }
             }
         }
@@ -82,204 +106,289 @@ class ProxyServer {
         CoroutineScope(Dispatchers.IO).launch {
             server?.start(wait = false)
             log("Proxy server started on http://127.0.0.1:${Config.PROXY_LISTEN_PORT}")
-            log("Forwarding to ${Config.TARGET_BASE_URL}")
-            log("Supports: HTTP, WebSocket (WS), Server-Sent Events (SSE)")
+            log("Available models: ${Config.MODEL_BACKENDS.map { it.name }}")
         }
     }
 
     /**
-     * Proxy HTTP requests including SSE streaming
-     * Uses Ktor's native channel-based streaming for efficient forwarding
+     * Handle chat/completions requests - routes to appropriate backend based on model
      */
-    private suspend fun proxyHttpRequest(call: ApplicationCall) {
-        val targetUrl = Config.buildHttpUrl(call.request.uri)
+    private suspend fun proxyChatCompletions(call: ApplicationCall) {
+        val uri = call.request.uri
         val startTime = System.currentTimeMillis()
 
+        // Only handle chat/completions endpoints
+        if (uri !in setOf("/v1/chat/completions", "/chat/completions")) {
+            call.respondText(
+                """{"error": {"message": "Unknown endpoint: $uri", "type": "invalid_request_error"}}""",
+                ContentType.Application.Json,
+                HttpStatusCode.NotFound
+            )
+            return
+        }
+
         try {
-            // Read body for logging (if present)
-            val bodyBytes = if (call.request.httpMethod in listOf(HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch)) {
-                call.receiveChannel().toByteArray()
-            } else {
-                null
+            val bodyBytes = call.receiveChannel().toByteArray()
+            val json = Json.parseToJsonElement(bodyBytes.decodeToString()).jsonObject
+            val model = json["model"]?.jsonPrimitive?.content
+
+            if (model == null) {
+                call.respondText(
+                    """{"error": {"message": "Missing 'model' field", "type": "invalid_request_error"}}""",
+                    ContentType.Application.Json,
+                    HttpStatusCode.BadRequest
+                )
+                return
             }
 
-            // Log request with prompt preview for OpenAI API
+            val backend = Config.getBackendForModel(model)
+            if (backend == null) {
+                call.respondText(
+                    """{"error": {"message": "Model '$model' not found. Available: ${Config.MODEL_BACKENDS.map { it.name }}", "type": "model_not_found"}}""",
+                    ContentType.Application.Json,
+                    HttpStatusCode.NotFound
+                )
+                return
+            }
+
             logRequest(call, bodyBytes)
 
-            // Use Ktor's HttpStatement for streaming responses without buffering
-            // This is critical for SSE (Server-Sent Events) streaming from OpenAI-compatible APIs
-            client.prepareRequest(targetUrl) {
-                method = call.request.httpMethod
+            if (backend.useResponsesApi) {
+                proxyChatCompletionsViaResponsesApi(call, json, backend, startTime)
+            } else {
+                proxyDirectChatCompletions(call, bodyBytes, backend, startTime)
+            }
 
-                // Copy headers using Ktor's native header handling (excluding hop-by-hop headers)
-                headers {
-                    call.request.headers.forEach { name, values ->
-                        // Exclude hop-by-hop headers as per RFC 2616
-                        if (!name.equals(HttpHeaders.Host, ignoreCase = true) &&
-                            !name.equals(HttpHeaders.Connection, ignoreCase = true) &&
-                            !name.equals("Keep-Alive", ignoreCase = true) &&
-                            !name.equals(HttpHeaders.TransferEncoding, ignoreCase = true) &&
-                            !name.equals(HttpHeaders.Upgrade, ignoreCase = true) &&
-                            !name.equals("Proxy-Authenticate", ignoreCase = true) &&
-                            !name.equals("Proxy-Authorization", ignoreCase = true) &&
-                            !name.equals("TE", ignoreCase = true) &&
-                            !name.equals("Trailers", ignoreCase = true)) {
-                            appendAll(name, values)
-                        }
-                    }
+        } catch (e: Exception) {
+            val duration = System.currentTimeMillis() - startTime
+            log("ERROR: ${call.request.httpMethod.value} $uri -> ${e.message} (${duration}ms)")
+            call.respondText(
+                """{"error": {"message": "Proxy error: ${e.message}", "type": "proxy_error"}}""",
+                ContentType.Application.Json,
+                HttpStatusCode.BadGateway
+            )
+        }
+    }
+
+    /**
+     * Proxy chat/completions directly (without Responses API conversion)
+     * For OpenAI-compatible backends like Ollama
+     */
+    private suspend fun proxyDirectChatCompletions(
+        call: ApplicationCall,
+        bodyBytes: ByteArray,
+        backend: ModelBackend,
+        startTime: Long
+    ) {
+        // Build URL - use /v1/chat/completions for OpenAI compatibility
+        val baseUrl = backend.backendUrl.removeSuffix("/v1").removeSuffix("/")
+        val targetUrl = "$baseUrl/v1/chat/completions"
+        val model = Json.parseToJsonElement(bodyBytes.decodeToString()).jsonObject["model"]?.jsonPrimitive?.content ?: "unknown"
+        log("POST ${call.request.uri} [model: $model] [backend: ${backend.name}] -> $targetUrl [direct proxy]")
+
+        try {
+            client.preparePost(targetUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(bodyBytes)
+                call.request.headers[HttpHeaders.Authorization]?.let {
+                    header(HttpHeaders.Authorization, it)
                 }
-
-                // Set body using native Ktor content
-                if (bodyBytes != null) {
-                    setBody(bodyBytes)
-                    contentType(call.request.contentType())
-                }
-
-                log("${call.request.httpMethod.value} ${call.request.uri} -> )")
             }.execute { response ->
-                // Stream response body using Ktor's low-level OutgoingContent API for true streaming
-                // Use WriteChannelContent for raw streaming control
                 call.respond(object : io.ktor.http.content.OutgoingContent.WriteChannelContent() {
                     override val status = response.status
                     override val contentType = response.contentType()
 
-                    override val headers = io.ktor.http.HeadersBuilder().apply {
-                        response.headers.forEach { name, values ->
-                            if (!name.equals(HttpHeaders.TransferEncoding, ignoreCase = true) &&
-                                !name.equals(HttpHeaders.Connection, ignoreCase = true) &&
-                                !name.equals("Keep-Alive", ignoreCase = true) &&
-                                !name.equals(HttpHeaders.Upgrade, ignoreCase = true) &&
-                                !name.equals("Proxy-Authenticate", ignoreCase = true) &&
-                                !name.equals("Proxy-Authorization", ignoreCase = true) &&
-                                !name.equals("TE", ignoreCase = true) &&
-                                !name.equals("Trailers", ignoreCase = true)) {
-                                appendAll(name, values)
-                            }
-                        }
-                    }.build()
-
                     override suspend fun writeTo(channel: ByteWriteChannel) {
-                        // Get streaming body channel for true streaming without buffering
                         val responseBody = response.bodyAsChannel()
-
-                        // Detect SSE for logging
-                        val isSSE = response.contentType()?.match(ContentType.Text.EventStream) == true
-                        val isKnownEndpoint = call.request.uri.contains("/api/chat") || call.request.uri.contains("/v1/chat/completions")
-
                         val buffer = ByteArray(256)
-                        var lastLogTime = System.currentTimeMillis()
-                        val sseResponses = mutableListOf<String>()
 
                         while (!responseBody.isClosedForRead) {
                             if (responseBody.availableForRead == 0) {
                                 if (!responseBody.awaitContent()) break
                             }
-
                             val bytesRead = responseBody.readAvailable(buffer, 0, buffer.size)
                             if (bytesRead <= 0) break
-
                             channel.writeFully(buffer, 0, bytesRead)
                             channel.flush()
-
-                            // Log SSE responses for known endpoints
-                            if (isSSE && isKnownEndpoint) {
-                                val chunk = buffer.decodeToString(0, bytesRead)
-                                extractSSEContent(chunk)?.let { sseResponses.add(it) }
-
-                                // Log progress every 2 seconds
-                                val now = System.currentTimeMillis()
-                                if (now - lastLogTime > 2000) {
-                                    log("  ... streaming ${call.request.uri} (${now - startTime}ms elapsed)")
-                                    lastLogTime = now
-                                }
-                            }
-                        }
-
-                        // Log collected SSE response content (up to 300 chars, one line)
-                        if (isSSE && isKnownEndpoint && sseResponses.isNotEmpty()) {
-                            val combinedResponse = sseResponses.joinToString(" ")
-                                .replace("\n", " ").replace("\r", " ")
-                                .let { if (it.length > 300) it.take(300) + "..." else it }
-                            log("  <- SSE response: $combinedResponse")
                         }
                     }
                 })
 
-                // Log response
                 val duration = System.currentTimeMillis() - startTime
-                val contentType = response.contentType()?.toString() ?: "unknown"
-                log("${call.request.httpMethod.value} ${call.request.uri} -> ${response.status.value} ($contentType, ${duration}ms)")
+                log("POST ${call.request.uri} <- ${response.status.value} (${duration}ms)")
             }
-
         } catch (e: Exception) {
             val duration = System.currentTimeMillis() - startTime
-            log("ERROR: ${call.request.httpMethod.value} ${call.request.uri} -> ${e.message} (${duration}ms)")
-            call.respondText("Proxy error: ${e.message}", status = HttpStatusCode.BadGateway)
+            log("ERROR: POST ${call.request.uri} -> ${e::class.simpleName}: ${e.message} (${duration}ms)")
+            log("  Target URL was: $targetUrl")
+            e.cause?.let { log("  Caused by: ${it::class.simpleName}: ${it.message}") }
+            call.respondText(
+                """{"error": {"message": "Proxy error: ${e.message}", "type": "proxy_error", "target": "$targetUrl"}}""",
+                ContentType.Application.Json,
+                HttpStatusCode.BadGateway
+            )
         }
     }
 
     /**
-     * Proxy WebSocket connections
-     * Creates a bidirectional tunnel between client and target server
-     * Called from within a webSocket routing block
+     * Convert Chat Completions request to Responses API, proxy it, and convert response back
      */
-    private suspend fun DefaultWebSocketServerSession.proxyWebSocketSession(call: ApplicationCall) {
-        val targetUrl = Config.TARGET_BASE_URL.replaceFirst("http", "ws") + call.request.uri
-        log("WS: ${call.request.uri} -> $targetUrl")
+    private suspend fun proxyChatCompletionsViaResponsesApi(
+        call: ApplicationCall,
+        originalJson: JsonObject,
+        backend: ModelBackend,
+        startTime: Long
+    ) {
+        val isStream = originalJson["stream"]?.jsonPrimitive?.boolean ?: false
+        val model = originalJson["model"]?.jsonPrimitive?.content ?: ""
+
+        // Convert Chat Completions -> Responses API request
+        val responsesApiBody = buildJsonObject {
+            put("model", model)
+            originalJson["messages"]?.let { put("input", it) }
+            if (isStream) put("stream", true)
+            originalJson["max_tokens"]?.let { put("max_output_tokens", it) }
+            originalJson["temperature"]?.let { put("temperature", it) }
+            originalJson["top_p"]?.let { put("top_p", it) }
+        }
+
+        // Build responses API URL - strip /v1 suffix if present since we add /v1/responses
+        val baseUrl = backend.backendUrl.removeSuffix("/v1").removeSuffix("/")
+        val targetUrl = "$baseUrl/v1/responses"
+        log("POST ${call.request.uri} [model: $model] [backend: ${backend.name}] -> $targetUrl [Responses API conversion]")
 
         try {
-            // This is the server-side WebSocket session (client connection)
-            val serverSession = this
-
-            // Get WebSocket connection parameters
-            val url = Url(Config.TARGET_BASE_URL)
-            val wsScheme = when (url.protocol.name) {
-                "https" -> "wss"
-                "http" -> "ws"
-                else -> "ws"
-            }
-            // Connect to target WebSocket using method that supports both ws and wss
-            client.webSocket(
-                method = HttpMethod.Get,
-                host = url.host,
-                port = url.port,
-                path = call.request.uri,
-                request = {
-                    this.url.protocol = URLProtocol.createOrDefault(wsScheme)
+            client.preparePost(targetUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(responsesApiBody.toString())
+                // Copy auth headers
+                call.request.headers[HttpHeaders.Authorization]?.let {
+                    header(HttpHeaders.Authorization, it)
                 }
-            ) {
-                // This is the client-side WebSocket session (target connection)
-                val clientSession = this
+            }.execute { response ->
+                if (!isStream) {
+                    // Non-streaming: convert response and return
+                    val responseText = response.bodyAsChannel().toByteArray().decodeToString()
+                    val chatResponse = convertResponsesApiToChatCompletions(responseText, model)
+                    call.respondText(chatResponse, ContentType.Application.Json, response.status)
+                } else {
+                    // Streaming: convert SSE events on the fly
+                    call.respond(object : io.ktor.http.content.OutgoingContent.WriteChannelContent() {
+                        override val status = response.status
+                        override val contentType = ContentType.Text.EventStream
 
-                // Create two concurrent jobs for bidirectional proxying
-                coroutineScope {
-                    // Forward messages from client to target
-                    launch {
-                        try {
-                            for (frame in serverSession.incoming) {
-                                clientSession.send(frame.copy())
-                            }
-                        } catch (e: Exception) {
-                            log("WS client->target error: ${e.message}")
-                        }
-                    }
+                        override suspend fun writeTo(channel: ByteWriteChannel) {
+                            val responseBody = response.bodyAsChannel()
+                            val chatId = "chatcmpl-${System.currentTimeMillis()}"
+                            var chunkIndex = 0
 
-                    // Forward messages from target to client
-                    launch {
-                        try {
-                            for (frame in clientSession.incoming) {
-                                serverSession.send(frame.copy())
+                            // Read line by line for SSE parsing
+                            while (!responseBody.isClosedForRead) {
+                                val line = responseBody.readUTF8Line() ?: break
+
+                                if (line.startsWith("data:")) {
+                                    val data = line.substring(5).trim()
+                                    if (data.isEmpty()) continue
+
+                                    val converted = convertResponsesApiEventToChatCompletions(data, chatId, model, chunkIndex++)
+                                    if (converted != null) {
+                                        channel.writeStringUtf8("data: $converted\n\n")
+                                        channel.flush()
+                                    }
+                                }
                             }
-                        } catch (e: Exception) {
-                            log("WS target->client error: ${e.message}")
+                            // Send [DONE]
+                            channel.writeStringUtf8("data: [DONE]\n\n")
+                            channel.flush()
                         }
-                    }
+                    })
                 }
+                val duration = System.currentTimeMillis() - startTime
+                log("POST /v1/chat/completions <- ${response.status.value} (${duration}ms)")
             }
-
-            log("WS: ${call.request.uri} closed")
         } catch (e: Exception) {
-            log("WS ERROR: ${call.request.uri} -> ${e.message}")
+            val duration = System.currentTimeMillis() - startTime
+            log("ERROR: POST ${call.request.uri} -> ${e::class.simpleName}: ${e.message} (${duration}ms)")
+            log("  Target URL was: $targetUrl")
+            e.cause?.let { log("  Caused by: ${it::class.simpleName}: ${it.message}") }
+            call.respondText(
+                """{"error": {"message": "Proxy error: ${e.message}", "type": "proxy_error", "target": "$targetUrl"}}""",
+                ContentType.Application.Json,
+                HttpStatusCode.BadGateway
+            )
+        }
+    }
+
+    private fun convertResponsesApiToChatCompletions(responseText: String, model: String): String {
+        return try {
+            val json = Json.parseToJsonElement(responseText).jsonObject
+            val output = json["output"]?.jsonArray?.firstOrNull()?.jsonObject
+            val content = output?.get("content")?.jsonArray?.firstOrNull()?.jsonObject
+                ?.get("text")?.jsonPrimitive?.content ?: ""
+
+            buildJsonObject {
+                put("id", "chatcmpl-${System.currentTimeMillis()}")
+                put("object", "chat.completion")
+                put("created", System.currentTimeMillis() / 1000)
+                put("model", model)
+                put("choices", buildJsonArray {
+                    add(buildJsonObject {
+                        put("index", 0)
+                        put("message", buildJsonObject {
+                            put("role", "assistant")
+                            put("content", content)
+                        })
+                        put("finish_reason", "stop")
+                    })
+                })
+            }.toString()
+        } catch (e: Exception) {
+            log("Error converting response: ${e.message}")
+            responseText
+        }
+    }
+
+    private fun convertResponsesApiEventToChatCompletions(data: String, chatId: String, model: String, index: Int): String? {
+        return try {
+            val json = Json.parseToJsonElement(data).jsonObject
+            val type = json["type"]?.jsonPrimitive?.content
+
+            when (type) {
+                "response.output_text.delta" -> {
+                    val delta = json["delta"]?.jsonPrimitive?.content ?: return null
+                    buildJsonObject {
+                        put("id", chatId)
+                        put("object", "chat.completion.chunk")
+                        put("created", System.currentTimeMillis() / 1000)
+                        put("model", model)
+                        put("choices", buildJsonArray {
+                            add(buildJsonObject {
+                                put("index", 0)
+                                put("delta", buildJsonObject { put("content", delta) })
+                                put("finish_reason", JsonNull)
+                            })
+                        })
+                    }.toString()
+                }
+                "response.completed" -> {
+                    buildJsonObject {
+                        put("id", chatId)
+                        put("object", "chat.completion.chunk")
+                        put("created", System.currentTimeMillis() / 1000)
+                        put("model", model)
+                        put("choices", buildJsonArray {
+                            add(buildJsonObject {
+                                put("index", 0)
+                                put("delta", buildJsonObject { })
+                                put("finish_reason", "stop")
+                            })
+                        })
+                    }.toString()
+                }
+                else -> null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 
@@ -351,6 +460,22 @@ class ProxyServer {
     private fun log(message: String) {
         val timestamp = LocalDateTime.now().format(timeFormatter)
         println("[$timestamp] [PROXY] $message")
+    }
+
+    private suspend fun respondModelsOpenAI(call: ApplicationCall) {
+        val models = Config.MODEL_BACKENDS.map { model ->
+            buildJsonObject {
+                put("id", model.name)
+                put("object", "model")
+                put("created", 1700000000L)
+                put("owned_by", "organization")
+            }
+        }
+        val response = buildJsonObject {
+            put("object", "list")
+            put("data", JsonArray(models))
+        }
+        call.respondText(response.toString(), ContentType.Application.Json)
     }
 
     fun stop() {
