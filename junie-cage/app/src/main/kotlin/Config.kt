@@ -28,34 +28,36 @@ data class ModelMatch(
 )
 
 object Config {
+    val TARGET_HOST : String
+        get() = System.getenv("JETCABLE_HOST") ?: "spark-07.labs.intellij.net"
+
     val PROXY_LISTEN_PORT: Int
         get() = System.getProperty("test.proxy.port")?.toIntOrNull() ?: 1984
-
-    const val HEALTH_CHECK_INTERVAL_MS = 100L
 
     val MODEL_BACKENDS: List<ModelBackend>
         get() {
             System.getProperty("test.target.url")?.let {
                 return listOf(ModelBackend(
-                    pattern = "gps-oss:120b",
-                    targetModel = "gps-oss:120b",
+                    pattern = ".*gpt-oss:120b",
+                    targetModel = "gpt-oss:120b",
                     backendUrl = it,
                     useResponsesApi = true,
-                    advertisedModels = listOf("gps-oss:120b")
+                    advertisedModels = listOf("gpt-oss:120b", "hetzner/openai/gpt-oss-120b")
                 ))
             }
+
             val schema = "h" + "t".repeat(2) + "p://"
-            val host = "spark-07.labs.intellij.net"
-            val vllm = "${schema}$host:8000"
-            val ollama = "${schema}$host:11434"
+            val vllm = "${schema}$TARGET_HOST:8000"
+            val ollama = "${schema}$TARGET_HOST:11434"
             return listOf(
-                // Exact match for gps-oss model -> Responses API backend
+                // Match gpt-oss model variants -> vLLM Responses API backend
+                // Matches: gpt-oss:120b, gpt-oss-120b, hetzner/openai/gpt-oss-120b, etc.
                 ModelBackend(
-                    pattern = "gps-oss:120b",
-                    targetModel = "gps-oss:120b",
+                    pattern = "(.*/)?gpt-oss[:-]120b",
+                    targetModel = "gpt-oss:120b",
                     backendUrl = "$vllm/v1",
                     useResponsesApi = true,
-                    advertisedModels = listOf("gps-oss:120b")
+                    advertisedModels = listOf("gpt-oss:120b", "hetzner/openai/gpt-oss-120b")
                 ),
                 // Exact matches for Ollama models
                 ModelBackend(

@@ -68,7 +68,7 @@ class ProxyServerTest {
         val models = json["models"]?.jsonArray
 
         assertTrue(models != null && models.isNotEmpty(), "Should return at least one model")
-        assertEquals("gps-oss:120b", models!!.first().jsonObject["name"]?.jsonPrimitive?.content)
+        assertEquals("gpt-oss:120b", models!!.first().jsonObject["name"]?.jsonPrimitive?.content)
 
         println("✓ /api/tags returns configured models")
     }
@@ -84,7 +84,7 @@ class ProxyServerTest {
 
         val models = json["data"]?.jsonArray
         assertTrue(models != null && models.isNotEmpty())
-        assertEquals("gps-oss:120b", models!!.first().jsonObject["id"]?.jsonPrimitive?.content)
+        assertEquals("gpt-oss:120b", models!!.first().jsonObject["id"]?.jsonPrimitive?.content)
 
         println("✓ /v1/models returns configured models")
     }
@@ -107,7 +107,7 @@ class ProxyServerTest {
 
         testClient.preparePost("http://localhost:$proxyPort/v1/chat/completions") {
             contentType(ContentType.Application.Json)
-            setBody("""{"model":"gps-oss:120b","messages":[{"role":"user","content":"Hello"}],"stream":true}""")
+            setBody("""{"model":"gpt-oss:120b","messages":[{"role":"user","content":"Hello"}],"stream":true}""")
         }.execute { response ->
             assertEquals(HttpStatusCode.OK, response.status)
             assertEquals(ContentType.Text.EventStream, response.contentType()?.withoutParameters())
@@ -133,7 +133,7 @@ class ProxyServerTest {
     fun `test chat completions non-streaming conversion`() = runTest(timeout = 5.seconds) {
         val response = testClient.post("http://localhost:$proxyPort/v1/chat/completions") {
             contentType(ContentType.Application.Json)
-            setBody("""{"model":"gps-oss:120b","messages":[{"role":"user","content":"Test"}],"stream":false}""")
+            setBody("""{"model":"gpt-oss:120b","messages":[{"role":"user","content":"Test"}],"stream":false}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -181,6 +181,92 @@ class ProxyServerTest {
         assertEquals(HttpStatusCode.BadRequest, response.status)
 
         println("✓ Missing model field returns 400")
+    }
+
+    @Test
+    fun `test health check endpoint returns OK`() = runTest(timeout = 5.seconds) {
+        val response = testClient.get("http://localhost:$proxyPort/")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals("OK", response.bodyAsText())
+
+        println("✓ / health check returns OK")
+    }
+
+    @Test
+    fun `test responses api non-streaming`() = runTest(timeout = 5.seconds) {
+        val response = testClient.post("http://localhost:$proxyPort/v1/responses") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"model":"gpt-oss:120b","input":"Hello","stream":false}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        assertTrue(json["output"] != null, "Should have output field")
+
+        println("✓ /v1/responses non-streaming works")
+    }
+
+    @Test
+    fun `test responses api streaming`() = runTest(timeout = 10.seconds) {
+        val receivedChunks = mutableListOf<String>()
+
+        testClient.preparePost("http://localhost:$proxyPort/v1/responses") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"model":"gpt-oss:120b","input":"Hello","stream":true}""")
+        }.execute { response ->
+            assertEquals(HttpStatusCode.OK, response.status)
+            assertEquals(ContentType.Text.EventStream, response.contentType()?.withoutParameters())
+
+            val channel = response.bodyAsChannel()
+            while (!channel.isClosedForRead) {
+                val line = channel.readUTF8Line() ?: break
+                if (line.startsWith("data:")) {
+                    receivedChunks.add(line.substring(5).trim())
+                }
+            }
+        }
+
+        assertTrue(receivedChunks.isNotEmpty(), "Should receive streaming chunks")
+
+        println("✓ /v1/responses streaming: ${receivedChunks.size} chunks received")
+    }
+
+    @Test
+    fun `test responses api with messages array input`() = runTest(timeout = 5.seconds) {
+        val response = testClient.post("http://localhost:$proxyPort/v1/responses") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"model":"gpt-oss:120b","input":[{"role":"user","content":"Test message"}],"stream":false}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        println("✓ /v1/responses with messages array works")
+    }
+
+    @Test
+    fun `test responses endpoint without v1 prefix`() = runTest(timeout = 5.seconds) {
+        val response = testClient.post("http://localhost:$proxyPort/responses") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"model":"gpt-oss:120b","input":"Hello","stream":false}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        println("✓ /responses (without v1) works")
+    }
+
+    @Test
+    fun `test responses api missing model returns 400`() = runTest(timeout = 5.seconds) {
+        val response = testClient.post("http://localhost:$proxyPort/v1/responses") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"input":"Hello"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+
+        println("✓ /v1/responses missing model returns 400")
     }
 
     private fun startMockServer(): EmbeddedServer<*, *> {
