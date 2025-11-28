@@ -153,12 +153,13 @@ class ProxyServer {
                 }
             }
 
-            // Handle chat/completions and responses endpoints
+            // Handle chat/completions, responses, and Ollama chat endpoints
             intercept(ApplicationCallPipeline.Call) {
                 val handledRoutes = setOf("/", "/api/tags", "/v1/models", "/models", "/debug/backends")
                 if (call.request.uri !in handledRoutes) {
                     when (call.request.uri) {
                         "/v1/responses", "/responses" -> proxyResponsesApi(call)
+                        "/api/chat" -> proxyOllamaChat(call)
                         else -> proxyChatCompletions(call)
                     }
                 }
@@ -237,6 +238,124 @@ class ProxyServer {
             log("ERROR: ${call.request.httpMethod.value} $uri -> ${e.message} (${duration}ms)")
             call.respondText(
                 """{"error": {"message": "Proxy error: ${e.message}", "type": "proxy_error"}}""",
+                ContentType.Application.Json,
+                HttpStatusCode.BadGateway
+            )
+        }
+    }
+
+    /**
+     * Handle Ollama /api/chat requests - proxy directly to Ollama backend
+     */
+    private suspend fun proxyOllamaChat(call: ApplicationCall) {
+        val uri = call.request.uri
+        val startTime = System.currentTimeMillis()
+
+        try {
+            val bodyBytes = call.receiveChannel().toByteArray()
+            val json = Json.parseToJsonElement(bodyBytes.decodeToString()).jsonObject
+            val inputModel = json["model"]?.jsonPrimitive?.content
+
+            if (inputModel == null) {
+                call.respondText(
+                    """{"error": "Missing 'model' field"}""",
+                    ContentType.Application.Json,
+                    HttpStatusCode.BadRequest
+                )
+                return
+            }
+
+            val match = Config.getBackendForModel(inputModel)
+            if (match == null) {
+                call.respondText(
+                    """{"error": "Model '$inputModel' not found"}""",
+                    ContentType.Application.Json,
+                    HttpStatusCode.NotFound
+                )
+                return
+            }
+
+            // Log prompt
+            extractPromptFromMessages(json)?.let { prompt ->
+                log(">>> PROMPT [Ollama]: ${truncateForLog(prompt)}")
+            }
+
+            log("MODEL ROUTING [Ollama]: '$inputModel' matched pattern '${match.backend.pattern}' -> target '${match.targetModel}'")
+
+            // Replace model in request body with target model
+            val modifiedBody = if (match.inputModel != match.targetModel) {
+                val jsonMap = json.toMutableMap()
+                jsonMap["model"] = JsonPrimitive(match.targetModel)
+                JsonObject(jsonMap).toString().toByteArray()
+            } else {
+                bodyBytes
+            }
+
+            // Build Ollama API URL
+            val baseUrl = match.backend.backendUrl.removeSuffix("/v1").removeSuffix("/")
+            val targetUrl = "$baseUrl/api/chat"
+            val isStream = json["stream"]?.jsonPrimitive?.boolean ?: true // Ollama defaults to streaming
+
+            log("POST $uri [input: ${match.inputModel}] [target: ${match.targetModel}] -> $targetUrl [Ollama chat]")
+
+            client.preparePost(targetUrl) {
+                contentType(ContentType.Application.Json)
+                setBody(modifiedBody)
+            }.execute { response ->
+                val accumulatedResponse = StringBuilder()
+
+                call.respond(object : io.ktor.http.content.OutgoingContent.WriteChannelContent() {
+                    override val status = response.status
+                    override val contentType = response.contentType()
+
+                    override suspend fun writeTo(channel: ByteWriteChannel) {
+                        val responseBody = response.bodyAsChannel()
+                        val buffer = ByteArray(256)
+                        val lineBuffer = StringBuilder()
+
+                        while (!responseBody.isClosedForRead) {
+                            if (responseBody.availableForRead == 0) {
+                                if (!responseBody.awaitContent()) break
+                            }
+                            val bytesRead = responseBody.readAvailable(buffer, 0, buffer.size)
+                            if (bytesRead <= 0) break
+
+                            // Track content for logging (Ollama streams JSON objects line by line)
+                            if (isStream) {
+                                val chunk = buffer.decodeToString(0, bytesRead)
+                                lineBuffer.append(chunk)
+                                while (lineBuffer.contains("\n")) {
+                                    val lineEnd = lineBuffer.indexOf("\n")
+                                    val line = lineBuffer.substring(0, lineEnd).trim()
+                                    lineBuffer.delete(0, lineEnd + 1)
+                                    if (line.isNotEmpty()) {
+                                        try {
+                                            val lineJson = Json.parseToJsonElement(line).jsonObject
+                                            val content = lineJson["message"]?.jsonObject?.get("content")?.jsonPrimitive?.content
+                                            content?.let { accumulatedResponse.append(it) }
+                                        } catch (_: Exception) {}
+                                    }
+                                }
+                            }
+
+                            channel.writeFully(buffer, 0, bytesRead)
+                            channel.flush()
+                        }
+                    }
+                })
+
+                val duration = System.currentTimeMillis() - startTime
+                if (accumulatedResponse.isNotEmpty()) {
+                    log("<<< RESPONSE [Ollama]: ${truncateForLog(accumulatedResponse.toString())}")
+                }
+                log("POST $uri <- ${response.status.value} (${duration}ms)")
+            }
+
+        } catch (e: Exception) {
+            val duration = System.currentTimeMillis() - startTime
+            log("ERROR: ${call.request.httpMethod.value} $uri -> ${e.message} (${duration}ms)")
+            call.respondText(
+                """{"error": "Proxy error: ${e.message}"}""",
                 ContentType.Application.Json,
                 HttpStatusCode.BadGateway
             )
