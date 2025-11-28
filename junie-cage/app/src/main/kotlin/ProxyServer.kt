@@ -50,10 +50,10 @@ class ProxyServer {
             routing {
                 // Intercept /api/tags to return our model list (Ollama format)
                 get("/api/tags") {
-                    val models = Config.MODEL_BACKENDS.map { model ->
+                    val models = Config.getAdvertisedModels().map { modelName ->
                         buildJsonObject {
-                            put("name", model.name)
-                            put("model", model.name)
+                            put("name", modelName)
+                            put("model", modelName)
                             put("modified_at", "2024-01-01T00:00:00Z")
                             put("size", 0L)
                         }
@@ -80,7 +80,8 @@ class ProxyServer {
                             "ERROR: ${e::class.simpleName}: ${e.message}"
                         }
                         buildJsonObject {
-                            put("model", backend.name)
+                            put("pattern", backend.pattern)
+                            put("targetModel", backend.targetModel)
                             put("backendUrl", backend.backendUrl)
                             put("targetUrl", targetUrl)
                             put("useResponsesApi", backend.useResponsesApi)
@@ -106,7 +107,10 @@ class ProxyServer {
         CoroutineScope(Dispatchers.IO).launch {
             server?.start(wait = false)
             log("Proxy server started on http://127.0.0.1:${Config.PROXY_LISTEN_PORT}")
-            log("Available models: ${Config.MODEL_BACKENDS.map { it.name }}")
+            log("Model routing rules (first match wins):")
+            Config.MODEL_BACKENDS.forEach { backend ->
+                log("  pattern='${backend.pattern}' -> target='${backend.targetModel}' @ ${backend.backendUrl}")
+            }
         }
     }
 
@@ -130,9 +134,9 @@ class ProxyServer {
         try {
             val bodyBytes = call.receiveChannel().toByteArray()
             val json = Json.parseToJsonElement(bodyBytes.decodeToString()).jsonObject
-            val model = json["model"]?.jsonPrimitive?.content
+            val inputModel = json["model"]?.jsonPrimitive?.content
 
-            if (model == null) {
+            if (inputModel == null) {
                 call.respondText(
                     """{"error": {"message": "Missing 'model' field", "type": "invalid_request_error"}}""",
                     ContentType.Application.Json,
@@ -141,10 +145,10 @@ class ProxyServer {
                 return
             }
 
-            val backend = Config.getBackendForModel(model)
-            if (backend == null) {
+            val match = Config.getBackendForModel(inputModel)
+            if (match == null) {
                 call.respondText(
-                    """{"error": {"message": "Model '$model' not found. Available: ${Config.MODEL_BACKENDS.map { it.name }}", "type": "model_not_found"}}""",
+                    """{"error": {"message": "Model '$inputModel' not found. Available patterns: ${Config.MODEL_BACKENDS.map { it.pattern }}", "type": "model_not_found"}}""",
                     ContentType.Application.Json,
                     HttpStatusCode.NotFound
                 )
@@ -153,10 +157,17 @@ class ProxyServer {
 
             logRequest(call, bodyBytes)
 
-            if (backend.useResponsesApi) {
-                proxyChatCompletionsViaResponsesApi(call, json, backend, startTime)
+            // Log the model routing decision
+            if (match.inputModel != match.targetModel) {
+                log("MODEL ROUTING: '$inputModel' matched pattern '${match.backend.pattern}' -> target '${match.targetModel}'")
             } else {
-                proxyDirectChatCompletions(call, bodyBytes, backend, startTime)
+                log("MODEL ROUTING: '$inputModel' matched pattern '${match.backend.pattern}' (exact match)")
+            }
+
+            if (match.backend.useResponsesApi) {
+                proxyChatCompletionsViaResponsesApi(call, json, match, startTime)
+            } else {
+                proxyDirectChatCompletions(call, bodyBytes, match, startTime)
             }
 
         } catch (e: Exception) {
@@ -177,19 +188,29 @@ class ProxyServer {
     private suspend fun proxyDirectChatCompletions(
         call: ApplicationCall,
         bodyBytes: ByteArray,
-        backend: ModelBackend,
+        match: ModelMatch,
         startTime: Long
     ) {
+        val backend = match.backend
         // Build URL - use /v1/chat/completions for OpenAI compatibility
         val baseUrl = backend.backendUrl.removeSuffix("/v1").removeSuffix("/")
         val targetUrl = "$baseUrl/v1/chat/completions"
-        val model = Json.parseToJsonElement(bodyBytes.decodeToString()).jsonObject["model"]?.jsonPrimitive?.content ?: "unknown"
-        log("POST ${call.request.uri} [model: $model] [backend: ${backend.name}] -> $targetUrl [direct proxy]")
+
+        // Replace model in request body with target model
+        val modifiedBody = if (match.inputModel != match.targetModel) {
+            val json = Json.parseToJsonElement(bodyBytes.decodeToString()).jsonObject.toMutableMap()
+            json["model"] = JsonPrimitive(match.targetModel)
+            JsonObject(json).toString().toByteArray()
+        } else {
+            bodyBytes
+        }
+
+        log("POST ${call.request.uri} [input: ${match.inputModel}] [target: ${match.targetModel}] [pattern: ${backend.pattern}] -> $targetUrl [direct proxy]")
 
         try {
             client.preparePost(targetUrl) {
                 contentType(ContentType.Application.Json)
-                setBody(bodyBytes)
+                setBody(modifiedBody)
                 call.request.headers[HttpHeaders.Authorization]?.let {
                     header(HttpHeaders.Authorization, it)
                 }
@@ -236,15 +257,15 @@ class ProxyServer {
     private suspend fun proxyChatCompletionsViaResponsesApi(
         call: ApplicationCall,
         originalJson: JsonObject,
-        backend: ModelBackend,
+        match: ModelMatch,
         startTime: Long
     ) {
+        val backend = match.backend
         val isStream = originalJson["stream"]?.jsonPrimitive?.boolean ?: false
-        val model = originalJson["model"]?.jsonPrimitive?.content ?: ""
 
-        // Convert Chat Completions -> Responses API request
+        // Convert Chat Completions -> Responses API request (using target model)
         val responsesApiBody = buildJsonObject {
-            put("model", model)
+            put("model", match.targetModel)
             originalJson["messages"]?.let { put("input", it) }
             if (isStream) put("stream", true)
             originalJson["max_tokens"]?.let { put("max_output_tokens", it) }
@@ -255,7 +276,7 @@ class ProxyServer {
         // Build responses API URL - strip /v1 suffix if present since we add /v1/responses
         val baseUrl = backend.backendUrl.removeSuffix("/v1").removeSuffix("/")
         val targetUrl = "$baseUrl/v1/responses"
-        log("POST ${call.request.uri} [model: $model] [backend: ${backend.name}] -> $targetUrl [Responses API conversion]")
+        log("POST ${call.request.uri} [input: ${match.inputModel}] [target: ${match.targetModel}] [pattern: ${backend.pattern}] -> $targetUrl [Responses API conversion]")
 
         try {
             client.preparePost(targetUrl) {
@@ -266,10 +287,12 @@ class ProxyServer {
                     header(HttpHeaders.Authorization, it)
                 }
             }.execute { response ->
+                // Return the input model name to the client (they asked for it)
+                val responseModel = match.inputModel
                 if (!isStream) {
                     // Non-streaming: convert response and return
                     val responseText = response.bodyAsChannel().toByteArray().decodeToString()
-                    val chatResponse = convertResponsesApiToChatCompletions(responseText, model)
+                    val chatResponse = convertResponsesApiToChatCompletions(responseText, responseModel)
                     call.respondText(chatResponse, ContentType.Application.Json, response.status)
                 } else {
                     // Streaming: convert SSE events on the fly
@@ -290,7 +313,7 @@ class ProxyServer {
                                     val data = line.substring(5).trim()
                                     if (data.isEmpty()) continue
 
-                                    val converted = convertResponsesApiEventToChatCompletions(data, chatId, model, chunkIndex++)
+                                    val converted = convertResponsesApiEventToChatCompletions(data, chatId, responseModel, chunkIndex++)
                                     if (converted != null) {
                                         channel.writeStringUtf8("data: $converted\n\n")
                                         channel.flush()
@@ -463,9 +486,9 @@ class ProxyServer {
     }
 
     private suspend fun respondModelsOpenAI(call: ApplicationCall) {
-        val models = Config.MODEL_BACKENDS.map { model ->
+        val models = Config.getAdvertisedModels().map { modelName ->
             buildJsonObject {
-                put("id", model.name)
+                put("id", modelName)
                 put("object", "model")
                 put("created", 1700000000L)
                 put("owned_by", "organization")

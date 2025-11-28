@@ -45,9 +45,9 @@ class IntegrationTest {
         }
 
         println("=== Integration Test Setup ===")
-        println("Configured models:")
+        println("Configured model routing rules:")
         Config.MODEL_BACKENDS.forEach {
-            println("  - ${it.name} -> ${it.backendUrl} (responsesApi=${it.useResponsesApi})")
+            println("  - pattern='${it.pattern}' -> target='${it.targetModel}' @ ${it.backendUrl} (responsesApi=${it.useResponsesApi})")
         }
 
         // Check if backends are reachable before starting proxy
@@ -112,15 +112,15 @@ class IntegrationTest {
     fun `integration - chat completions non-streaming for each model`() = runBlocking {
         assumeTrue(backendsReachable, "Skipping: backends not reachable")
 
-        for (backend in Config.MODEL_BACKENDS) {
-            println("\n--- Testing ${backend.name} (non-streaming) ---")
+        for (backend in Config.getExplicitModels()) {
+            println("\n--- Testing ${backend.targetModel} (non-streaming) ---")
             println("Backend: ${backend.backendUrl}")
             println("Uses Responses API: ${backend.useResponsesApi}")
 
             val startTime = System.currentTimeMillis()
             val response = testClient.post("http://localhost:$proxyPort/v1/chat/completions") {
                 contentType(ContentType.Application.Json)
-                setBody("""{"model":"${backend.name}","messages":[{"role":"user","content":"Say hello in one word"}],"stream":false,"max_tokens":10}""")
+                setBody("""{"model":"${backend.targetModel}","messages":[{"role":"user","content":"Say hello in one word"}],"stream":false,"max_tokens":10}""")
             }
             val duration = System.currentTimeMillis() - startTime
 
@@ -136,7 +136,7 @@ class IntegrationTest {
             } else {
                 val error = response.bodyAsText()
                 println("Error: $error")
-                Assertions.fail("Model ${backend.name} returned ${response.status}: $error")
+                Assertions.fail("Model ${backend.targetModel} returned ${response.status}: $error")
             }
         }
     }
@@ -145,8 +145,8 @@ class IntegrationTest {
     fun `integration - chat completions streaming for each model`() = runBlocking {
         assumeTrue(backendsReachable, "Skipping: backends not reachable")
 
-        for (backend in Config.MODEL_BACKENDS) {
-            println("\n--- Testing ${backend.name} (streaming) ---")
+        for (backend in Config.getExplicitModels()) {
+            println("\n--- Testing ${backend.targetModel} (streaming) ---")
             println("Backend: ${backend.backendUrl}")
             println("Uses Responses API: ${backend.useResponsesApi}")
 
@@ -155,7 +155,7 @@ class IntegrationTest {
 
             testClient.preparePost("http://localhost:$proxyPort/v1/chat/completions") {
                 contentType(ContentType.Application.Json)
-                setBody("""{"model":"${backend.name}","messages":[{"role":"user","content":"Say hi"}],"stream":true,"max_tokens":10}""")
+                setBody("""{"model":"${backend.targetModel}","messages":[{"role":"user","content":"Say hi"}],"stream":true,"max_tokens":10}""")
             }.execute { response ->
                 println("Status: ${response.status}")
 
@@ -182,7 +182,7 @@ class IntegrationTest {
                 } else {
                     val error = response.bodyAsText()
                     println("Error: $error")
-                    Assertions.fail("Model ${backend.name} streaming returned ${response.status}: $error")
+                    Assertions.fail("Model ${backend.targetModel} streaming returned ${response.status}: $error")
                 }
             }
 
@@ -192,7 +192,7 @@ class IntegrationTest {
             println("Response: $fullResponse")
             println("Duration: ${duration}ms")
 
-            assertTrue(chunks.isNotEmpty(), "Should receive streaming chunks for ${backend.name}")
+            assertTrue(chunks.isNotEmpty(), "Should receive streaming chunks for ${backend.targetModel}")
         }
     }
 }
